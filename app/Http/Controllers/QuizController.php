@@ -2,144 +2,189 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Achievement;
 use App\Models\Quest;
-use App\Models\QuizAttempt;
-use App\Models\QuizQuestion;
 use App\Models\User;
-use App\Models\UserAchievement;
-use App\Models\UserQuest;
+use App\Services\ProgressionService;
+use App\Services\QuizService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class QuizController extends Controller
 {
-    public function index(Request $request): View
+    public function __construct(
+        private readonly QuizService $quiz,
+        private readonly ProgressionService $progression,
+    ) {}
+
+    public function index(Request $request, ?string $module = null): View|RedirectResponse
     {
         /** @var User $user */
-        $user = Auth::user() ?? User::where('email', 'karan.mehra@maba.ac.id')->first() ?? User::first();
+        $user = $request->user();
 
-        $questions = QuizQuestion::where('module_code', 'MOD-04')
-            ->orderBy('question_number')
-            ->get();
+        $moduleCode = $module ?: $this->defaultModuleCode($user);
 
-        $latestAttempt = $user->quizAttempts()
-            ->where('module_code', 'MOD-04')
-            ->latest()
-            ->first();
+        if ($moduleCode === null) {
+            return redirect()->route('quests.index')->with('toast', [
+                'title' => 'Belum ada kuis',
+                'message' => 'Belum ada modul kuis yang terbuka untuk Anda.',
+                'icon' => 'lock',
+                'tone' => 'warning',
+            ]);
+        }
 
-        return view('pages.quiz', compact('user', 'questions', 'latestAttempt'));
+        $quest = Quest::query()->where('quiz_module_code', $moduleCode)->first();
+
+        if ($quest === null) {
+            abort(404, 'Modul kuis tidak ditemukan.');
+        }
+
+        $status = $this->progression->statusFor($user, $quest);
+
+        if (! $status->isOpen()) {
+            return redirect()->route('quests.index')->with('toast', [
+                'title' => 'Kuis masih terkunci',
+                'message' => 'Selesaikan modul sebelumnya terlebih dahulu.',
+                'icon' => 'lock',
+                'tone' => 'warning',
+            ]);
+        }
+
+        $questions = $this->quiz->questions($moduleCode);
+        $best = $this->quiz->bestAttempt($user, $moduleCode);
+
+        return view('pages.quiz', [
+            'user' => $user,
+            'quest' => $quest,
+            'questions' => $questions,
+            'moduleCode' => $moduleCode,
+            'bestAttempt' => $best,
+            'attemptCount' => $this->quiz->attemptCount($user, $moduleCode),
+            'maxAttempts' => $this->quiz->maxAttempts(),
+            'remainingAttempts' => $this->quiz->remainingAttempts($user, $moduleCode),
+            'timeLimit' => $this->quiz->timeLimit(),
+            'passPercentage' => $this->quiz->passPercentage(),
+            'hasPassed' => $this->quiz->hasPassed($user, $moduleCode),
+        ]);
+    }
+
+    /**
+     * Membuka sesi kuis: server menyimpan stempel waktu mulai agar durasi
+     * pengerjaan tidak bisa dikirim sembarangan oleh klien.
+     */
+    public function start(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $data = $request->validate([
+            'module_code' => ['required', 'string', 'max:20'],
+        ]);
+
+        $moduleCode = $data['module_code'];
+
+        if ($this->quiz->remainingAttempts($user, $moduleCode) <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Batas percobaan kuis sudah tercapai.',
+            ], 422);
+        }
+
+        $startedAt = now();
+
+        $request->session()->put("quiz.started_at.{$moduleCode}", $startedAt->toIso8601String());
+        $request->session()->put("quiz.expires_at.{$moduleCode}", $this->quiz->expiry()->toIso8601String());
+
+        return response()->json([
+            'success' => true,
+            'module_code' => $moduleCode,
+            'started_at' => $startedAt->toIso8601String(),
+            'expires_at' => $this->quiz->expiry()->toIso8601String(),
+            'time_limit' => $this->quiz->timeLimit(),
+            'attempt_number' => $this->quiz->attemptCount($user, $moduleCode) + 1,
+            'remaining_attempts' => $this->quiz->remainingAttempts($user, $moduleCode),
+        ]);
     }
 
     public function submit(Request $request): JsonResponse|RedirectResponse
     {
         /** @var User $user */
-        $user = Auth::user() ?? User::where('email', 'karan.mehra@maba.ac.id')->first() ?? User::first();
+        $user = $request->user();
 
-        $submittedAnswers = $request->input('answers', []);
-        $timeTaken = (int) $request->input('time_taken', 65);
-
-        $questions = QuizQuestion::where('module_code', 'MOD-04')
-            ->orderBy('question_number')
-            ->get();
-
-        $correctCount = 0;
-        $totalQuestions = $questions->count();
-        $xpEarned = 0;
-        $evaluations = [];
-
-        foreach ($questions as $q) {
-            $userAns = strtoupper((string) ($submittedAnswers[$q->question_number] ?? ''));
-            $isCorrect = ($userAns === strtoupper($q->correct_option));
-
-            if ($isCorrect) {
-                $correctCount++;
-                $xpEarned += $q->xp_reward;
-            }
-
-            $evaluations[$q->question_number] = [
-                'user_answer' => $userAns,
-                'correct_answer' => $q->correct_option,
-                'is_correct' => $isCorrect,
-                'explanation' => $q->explanation,
-            ];
-        }
-
-        $isPassed = ($correctCount >= 3);
-
-        $attempt = QuizAttempt::create([
-            'user_id' => $user->id,
-            'module_code' => 'MOD-04',
-            'score' => $correctCount,
-            'total_questions' => $totalQuestions,
-            'xp_earned' => $xpEarned,
-            'time_taken_seconds' => $timeTaken,
-            'answers' => $evaluations,
-            'is_passed' => $isPassed,
+        $data = $request->validate([
+            'module_code' => ['required', 'string', 'max:20'],
+            'answers' => ['required', 'array', 'min:1'],
+            'answers.*' => ['nullable', 'string', 'in:A,B,C,D,a,b,c,d'],
+            'started_at' => ['nullable', 'date'],
         ]);
 
-        // Award XP to student
-        if ($xpEarned > 0) {
-            $user->addXp($xpEarned);
+        $moduleCode = $data['module_code'];
+
+        // Waktu mulai diambil dari sesi (otoritatif), bukan dari body request.
+        $sessionStart = $request->session()->pull("quiz.started_at.{$moduleCode}");
+        $startedAt = $sessionStart !== null ? Carbon::parse($sessionStart) : null;
+
+        if ($startedAt === null && ! empty($data['started_at'])) {
+            $startedAt = Carbon::parse($data['started_at']);
         }
 
-        // If passed, mark MOD-04 as completed in UserQuest
-        if ($isPassed) {
-            $quest = Quest::where('code', 'MOD-04')->first();
-            if ($quest) {
-                UserQuest::updateOrCreate(
-                    ['user_id' => $user->id, 'quest_id' => $quest->id],
-                    ['status' => 'completed', 'completed_at' => now()]
-                );
-
-                // Unlock next quest (MOD-05)
-                $nextQuest = Quest::where('step_number', $quest->step_number + 1)->first();
-                if ($nextQuest) {
-                    UserQuest::updateOrCreate(
-                        ['user_id' => $user->id, 'quest_id' => $nextQuest->id],
-                        ['status' => 'in_progress']
-                    );
-                }
+        try {
+            $result = $this->quiz->grade($user, $moduleCode, $data['answers'], $startedAt);
+        } catch (ValidationException $exception) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => collect($exception->errors())->flatten()->first(),
+                    'errors' => $exception->errors(),
+                ], 422);
             }
+
+            return back()->withErrors($exception->errors());
         }
 
-        // If perfect score, unlock 'ach-03' (Juara Kuiz Fakulti)
-        if ($correctCount === $totalQuestions) {
-            $quizAchievement = Achievement::where('code', 'ach-03')->first();
-            if ($quizAchievement) {
-                UserAchievement::updateOrCreate(
-                    ['user_id' => $user->id, 'achievement_id' => $quizAchievement->id],
-                    [
-                        'current_steps' => 1,
-                        'is_unlocked' => true,
-                        'unlocked_at' => now(),
-                    ]
-                );
-            }
-        }
+        $attempt = $result['attempt'];
+        $newlyUnlocked = $result['newly_unlocked'];
+
+        $payload = [
+            'success' => true,
+            'score' => $attempt->score,
+            'total' => $attempt->total_questions,
+            'percentage' => $attempt->percentage,
+            'xp_earned' => $attempt->xp_earned,
+            'is_passed' => $attempt->is_passed,
+            'attempt_number' => $attempt->attempt_number,
+            'remaining_attempts' => $this->quiz->remainingAttempts($user, $moduleCode),
+            'evaluations' => $result['evaluations'],
+            'user_xp' => $user->refresh()->xp,
+            'user_level' => $user->level,
+            'level_title' => $user->level_title,
+            'newly_unlocked' => $newlyUnlocked->map(fn ($achievement): array => [
+                'title' => $achievement->title,
+                'icon' => $achievement->icon,
+                'xp' => $achievement->xp_reward,
+            ])->values(),
+        ];
 
         if ($request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'score' => $correctCount,
-                'total' => $totalQuestions,
-                'percentage' => round(($correctCount / $totalQuestions) * 100),
-                'xp_earned' => $xpEarned,
-                'is_passed' => $isPassed,
-                'evaluations' => $evaluations,
-                'user_xp' => $user->xp,
-                'user_level' => $user->level,
-            ]);
+            return response()->json($payload);
         }
 
-        return redirect()->route('quiz')->with('quiz_result', [
-            'score' => $correctCount,
-            'total' => $totalQuestions,
-            'xp_earned' => $xpEarned,
-            'is_passed' => $isPassed,
-        ]);
+        return redirect()->route('quiz', ['module' => $moduleCode])->with('quiz_result', $payload);
+    }
+
+    /**
+     * Pilih modul kuis pertama yang sedang terbuka bagi mahasiswa.
+     */
+    private function defaultModuleCode(User $user): ?string
+    {
+        $board = $this->progression->questBoard($user);
+
+        $open = $board->first(fn (array $row): bool => $row['status']->isOpen()
+            && $row['quest']->quiz_module_code !== null);
+
+        return $open['quest']->quiz_module_code ?? null;
     }
 }

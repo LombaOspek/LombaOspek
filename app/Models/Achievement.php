@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AchievementMetric;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,8 +15,10 @@ class Achievement extends Model
         'description',
         'icon',
         'category',
+        'metric',
         'xp_reward',
         'total_steps',
+        'is_automatic',
         'badge_name',
         'badge_color',
     ];
@@ -23,8 +26,10 @@ class Achievement extends Model
     protected function casts(): array
     {
         return [
+            'metric' => AchievementMetric::class,
             'xp_reward' => 'integer',
             'total_steps' => 'integer',
+            'is_automatic' => 'boolean',
         ];
     }
 

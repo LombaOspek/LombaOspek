@@ -2,121 +2,155 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TicketStatus;
+use App\Http\Requests\StoreHelpTicketRequest;
+use App\Http\Requests\UpdatePasswordRequest;
+use App\Http\Requests\UpdateProfileRequest;
+use App\Http\Requests\UpdateSettingsRequest;
 use App\Models\Faq;
 use App\Models\HelpTicket;
 use App\Models\User;
+use App\Services\AchievementService;
+use App\Services\CertificateService;
+use App\Services\LeaderboardService;
+use App\Services\ProgressionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
+    public function __construct(
+        private readonly ProgressionService $progression,
+        private readonly LeaderboardService $leaderboard,
+        private readonly CertificateService $certificates,
+        private readonly AchievementService $achievements,
+    ) {}
+
     public function index(Request $request): View
     {
         /** @var User $user */
-        $user = Auth::user() ?? User::where('email', 'karan.mehra@maba.ac.id')->first() ?? User::first();
+        $user = $request->user();
 
-        $faqs = Faq::orderBy('sort_order')->get();
-        $tickets = $user->helpTickets()->latest()->get();
+        $tab = (string) $request->query('tab', 'profile');
 
-        $activeTab = $request->query('tab', 'profile');
-
-        return view('pages.profile', compact('user', 'faqs', 'tickets', 'activeTab'));
-    }
-
-    public function update(Request $request): RedirectResponse
-    {
-        /** @var User $user */
-        $user = Auth::user() ?? User::where('email', 'karan.mehra@maba.ac.id')->first() ?? User::first();
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:30'],
-            'faculty' => ['nullable', 'string', 'max:255'],
-            'major' => ['nullable', 'string', 'max:255'],
-            'group_name' => ['nullable', 'string', 'max:100'],
-        ]);
-
-        $user->update($validated);
-
-        return redirect()->route('profile', ['tab' => 'profile'])->with('toast', [
-            'title' => 'Profil Dikemaskini!',
-            'message' => 'Maklumat rasmi pendaftaran anda berjaya disimpan.',
-            'icon' => '✅',
-        ]);
-    }
-
-    public function updateSettings(Request $request): JsonResponse|RedirectResponse
-    {
-        /** @var User $user */
-        $user = Auth::user() ?? User::where('email', 'karan.mehra@maba.ac.id')->first() ?? User::first();
-
-        if ($request->has('current_password') && $request->filled('password')) {
-            $request->validate([
-                'current_password' => ['required', 'current_password'],
-                'password' => ['required', 'min:6', 'confirmed'],
-            ]);
-
-            $user->update([
-                'password' => Hash::make($request->password),
-            ]);
-
-            return back()->with('toast', [
-                'title' => 'Kata Laluan Dikemaskini!',
-                'message' => 'Kata laluan akaun anda telah ditukar dengan selamat.',
-                'icon' => '🔑',
-            ]);
+        if (! in_array($tab, ['profile', 'settings', 'helpdesk'], true)) {
+            $tab = 'profile';
         }
 
-        $user->sound_effects = $request->boolean('sound_effects', $user->sound_effects);
-        $user->email_notifications = $request->boolean('email_notifications', $user->email_notifications);
-        $user->whatsapp_notifications = $request->boolean('whatsapp_notifications', $user->whatsapp_notifications);
-        $user->dark_mode = $request->boolean('dark_mode', $user->dark_mode);
-        $user->save();
+        $faqs = Faq::query()->published()->orderBy('sort_order')->get();
+
+        $tickets = $user->helpTickets()
+            ->with('answeredBy:id,name')
+            ->latest('id')
+            ->get();
+
+        return view('pages.profile', [
+            'user' => $user,
+            'faqs' => $faqs,
+            'tickets' => $tickets,
+            'activeTab' => $tab,
+            'categories' => StoreHelpTicketRequest::CATEGORIES,
+            'completedQuests' => $this->progression->completedCount($user),
+            'totalQuests' => $this->progression->questBoard($user)->count(),
+            'certificate' => $this->certificates->status($user),
+            'rank' => $this->leaderboard->rankOf($user),
+            'achievementCount' => $this->achievements->board($user)->where('is_unlocked', true)->count(),
+            'pendingTickets' => $tickets->where('status', TicketStatus::Open)->count(),
+        ]);
+    }
+
+    public function update(UpdateProfileRequest $request): RedirectResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        // NIM, email, dan role sengaja tidak dapat diubah dari form profil:
+        // ketiganya identitas akademik yang hanya boleh diubah admin.
+        $user->update($request->validated());
+
+        return redirect()->route('profile', ['tab' => 'profile'])->with('toast', [
+            'title' => 'Profil diperbarui',
+            'message' => 'Data akademik Anda berhasil disimpan.',
+            'icon' => 'check',
+            'tone' => 'success',
+        ]);
+    }
+
+    /**
+     * Toggle preferensi. Nilai selalu ditulis eksplisit (true/false) sehingga
+     * checkbox yang dilepas benar-benar mematikan setelan — bug lama membuat
+     * setelan tidak pernah bisa dimatikan karena `boolean()` memakai default.
+     */
+    public function updateSettings(UpdateSettingsRequest $request): JsonResponse|RedirectResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        $user->forceFill($request->toggles())->save();
 
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Tetapan pilihan berjaya disimpan.',
-                'sound_effects' => $user->sound_effects,
-                'dark_mode' => $user->dark_mode,
+                'message' => 'Preferensi disimpan.',
+                'settings' => [
+                    'sound_effects' => $user->sound_effects,
+                    'email_notifications' => $user->email_notifications,
+                    'whatsapp_notifications' => $user->whatsapp_notifications,
+                    'dark_mode' => $user->dark_mode,
+                ],
             ]);
         }
 
         return redirect()->route('profile', ['tab' => 'settings'])->with('toast', [
-            'title' => 'Tetapan Disimpan',
-            'message' => 'Keutamaan akaun anda telah dikemaskini.',
-            'icon' => '⚙️',
+            'title' => 'Preferensi disimpan',
+            'message' => 'Pengaturan akun Anda telah diperbarui.',
+            'icon' => 'settings',
+            'tone' => 'success',
         ]);
     }
 
-    public function submitHelpTicket(Request $request): RedirectResponse
+    public function updatePassword(UpdatePasswordRequest $request): RedirectResponse
     {
         /** @var User $user */
-        $user = Auth::user() ?? User::where('email', 'karan.mehra@maba.ac.id')->first() ?? User::first();
+        $user = $request->user();
 
-        $validated = $request->validate([
-            'subject' => ['required', 'string', 'max:255'],
-            'category' => ['required', 'string', 'max:100'],
-            'message' => ['required', 'string'],
+        $user->update(['password' => $request->validated('password')]);
+
+        $request->session()->regenerate();
+
+        return redirect()->route('profile', ['tab' => 'settings'])->with('toast', [
+            'title' => 'Kata sandi diganti',
+            'message' => 'Gunakan kata sandi baru pada login berikutnya.',
+            'icon' => 'key',
+            'tone' => 'success',
         ]);
+    }
 
-        $ticket = HelpTicket::create([
-            'user_id' => $user->id,
-            'subject' => $validated['subject'],
-            'category' => $validated['category'],
-            'message' => $validated['message'],
-            'status' => 'answered',
-            'reply' => 'Salam sejahtera '.$user->name.'. Pihak senior pembimbing telah menerima pertanyaan anda berkenaan "'.$validated['subject'].'". Kami akan membantu anda dan anda juga dialu-alukan datang ke Bilik Kaunseling 4B untuk bimbingan langsung.',
+    /**
+     * Tiket dibuat berstatus `open` tanpa jawaban palsu. Balasan datang dari
+     * mentor sungguhan lewat /mentor/tiket — versi lama langsung mengisi
+     * balasan otomatis yang menyesatkan.
+     */
+    public function submitHelpTicket(StoreHelpTicketRequest $request): RedirectResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        HelpTicket::create([
+            'user_id' => $user->getKey(),
+            'subject' => $request->validated('subject'),
+            'category' => $request->validated('category'),
+            'message' => $request->validated('message'),
+            'status' => TicketStatus::Open,
         ]);
 
         return redirect()->route('profile', ['tab' => 'helpdesk'])->with('toast', [
-            'title' => 'Tiket Bantuan Dihantar!',
-            'message' => 'Senior pembimbing telah menerima mesej anda.',
-            'icon' => '📩',
+            'title' => 'Tiket terkirim',
+            'message' => 'Mentor orientasi akan menjawab melalui portal ini.',
+            'icon' => 'send',
+            'tone' => 'success',
         ]);
     }
 }

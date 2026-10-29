@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\LoginRequest;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\View\View;
 
 class AuthController extends Controller
@@ -16,53 +18,37 @@ class AuthController extends Controller
             return redirect()->route('dashboard');
         }
 
-        return view('auth.login');
+        return view('auth.login', [
+            'demoEnabled' => (bool) config('ospek.demo.enabled'),
+            'demoNim' => (string) config('ospek.demo.nim'),
+        ]);
     }
 
-    public function login(Request $request): RedirectResponse
+    public function login(LoginRequest $request): RedirectResponse
     {
-        $credentials = $request->validate([
-            'identity' => ['required', 'string'],
-            'password' => ['required', 'string'],
-        ]);
+        $identity = (string) $request->validated('identity');
 
-        $identity = $credentials['identity'];
-        $user = User::where('email', $identity)
-            ->orWhere('nim', $identity)
+        $user = User::query()
+            ->where('nim', $identity)
+            ->orWhere('email', $identity)
             ->first();
 
-        if ($user && Auth::attempt(['email' => $user->email, 'password' => $credentials['password']], $request->boolean('remember'))) {
-            $request->session()->regenerate();
-
-            return redirect()->intended(route('dashboard'))->with('toast', [
-                'title' => 'Selamat Datang!',
-                'message' => 'Berjaya masuk sebagai '.$user->name,
-                'icon' => '👋',
-            ]);
+        if ($user === null || ! Hash::check((string) $request->validated('password'), $user->password)) {
+            // Pesan seragam: jangan membocorkan apakah NIM atau sandi yang salah.
+            return back()
+                ->withErrors(['identity' => 'NIM/email atau kata sandi tidak cocok.'])
+                ->onlyInput('identity');
         }
 
-        return back()->withErrors([
-            'identity' => 'NIM atau Kata Laluan tidak sah. Sila cuba lagi atau gunakan butang demo.',
-        ])->onlyInput('identity');
-    }
+        Auth::login($user, $request->boolean('remember'));
+        $request->session()->regenerate();
 
-    public function quickLogin(Request $request): RedirectResponse
-    {
-        $user = User::where('email', 'karan.mehra@maba.ac.id')->first()
-            ?? User::first();
-
-        if ($user) {
-            Auth::login($user);
-            $request->session()->regenerate();
-
-            return redirect()->route('dashboard')->with('toast', [
-                'title' => 'Log Masuk Pantas Berjaya!',
-                'message' => 'Selamat kembali ke OspekQuest, '.$user->name.'!',
-                'icon' => '🚀',
-            ]);
-        }
-
-        return redirect()->route('login');
+        return redirect()->intended(route('dashboard'))->with('toast', [
+            'title' => 'Berhasil masuk',
+            'message' => 'Selamat datang, '.$user->name.'.',
+            'icon' => 'check',
+            'tone' => 'success',
+        ]);
     }
 
     public function logout(Request $request): RedirectResponse
@@ -72,9 +58,10 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login')->with('toast', [
-            'title' => 'Log Keluar Berjaya',
-            'message' => 'Jumpa lagi di sesi orientasi seterusnya!',
-            'icon' => '👋',
+            'title' => 'Sesi diakhiri',
+            'message' => 'Anda telah keluar dari portal orientasi.',
+            'icon' => 'logout',
+            'tone' => 'neutral',
         ]);
     }
 }

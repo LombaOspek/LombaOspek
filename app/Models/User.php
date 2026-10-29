@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -17,6 +17,7 @@ use Illuminate\Notifications\Notifiable;
     'nim',
     'email',
     'password',
+    'role',
     'faculty',
     'major',
     'group_name',
@@ -25,11 +26,14 @@ use Illuminate\Notifications\Notifiable;
     'xp',
     'level',
     'streak_days',
+    'last_active_on',
     'avatar',
+    'avatar_path',
     'sound_effects',
     'email_notifications',
     'whatsapp_notifications',
     'dark_mode',
+    'orientation_completed_at',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -38,8 +42,6 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
-     * Get the attributes that should be cast.
-     *
      * @return array<string, string>
      */
     protected function casts(): array
@@ -47,13 +49,16 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role' => UserRole::class,
             'xp' => 'integer',
             'level' => 'integer',
             'streak_days' => 'integer',
+            'last_active_on' => 'date',
             'sound_effects' => 'boolean',
             'email_notifications' => 'boolean',
             'whatsapp_notifications' => 'boolean',
             'dark_mode' => 'boolean',
+            'orientation_completed_at' => 'datetime',
         ];
     }
 
@@ -65,7 +70,7 @@ class User extends Authenticatable
     public function quests(): BelongsToMany
     {
         return $this->belongsToMany(Quest::class, 'user_quests')
-            ->withPivot(['status', 'completed_at'])
+            ->withPivot(['status', 'completed_at', 'xp_awarded'])
             ->withTimestamps();
     }
 
@@ -91,28 +96,73 @@ class User extends Authenticatable
         return $this->hasMany(HelpTicket::class);
     }
 
-    public function addXp(int $amount): void
+    public function xpTransactions(): HasMany
     {
-        $this->xp += $amount;
-        $newLevel = (int) floor($this->xp / 350) + 1;
-        if ($newLevel > $this->level) {
-            $this->level = $newLevel;
-        }
-        $this->save();
+        return $this->hasMany(XpTransaction::class);
     }
 
-    public function getRankTitleAttribute(): string
+    public function isMentor(): bool
     {
-        if ($this->level >= 6) {
-            return 'Mahasiswa Legenda';
-        }
-        if ($this->level >= 4) {
-            return 'Perintis Kampus';
-        }
-        if ($this->level >= 2) {
-            return 'Pengembara Siswa';
+        return $this->role->canReviewTickets();
+    }
+
+    /**
+     * Judul level berdasarkan pita XP pada config/ospek.php.
+     */
+    public function getLevelTitleAttribute(): string
+    {
+        /** @var array<int, array{title: string, min_xp: int}> $levels */
+        $levels = config('ospek.levels', []);
+
+        return $levels[$this->level]['title'] ?? 'Maba Pemula';
+    }
+
+    /**
+     * Ambang XP level berikutnya, null bila sudah level tertinggi.
+     */
+    public function getNextLevelXpAttribute(): ?int
+    {
+        /** @var array<int, array{title: string, min_xp: int}> $levels */
+        $levels = config('ospek.levels', []);
+
+        return $levels[$this->level + 1]['min_xp'] ?? null;
+    }
+
+    /**
+     * Progres menuju level berikutnya dalam peratus (0-100).
+     */
+    public function getLevelProgressAttribute(): int
+    {
+        /** @var array<int, array{title: string, min_xp: int}> $levels */
+        $levels = config('ospek.levels', []);
+
+        $currentFloor = $levels[$this->level]['min_xp'] ?? 0;
+        $nextFloor = $levels[$this->level + 1]['min_xp'] ?? null;
+
+        if ($nextFloor === null) {
+            return 100;
         }
 
-        return 'Maba Pemula';
+        $span = max(1, $nextFloor - $currentFloor);
+
+        return (int) min(100, max(0, round((($this->xp - $currentFloor) / $span) * 100)));
+    }
+
+    public function getXpToNextLevelAttribute(): ?int
+    {
+        return $this->next_level_xp === null
+            ? null
+            : max(0, $this->next_level_xp - $this->xp);
+    }
+
+    /**
+     * Kode verifikasi sertifikat: stabil per mahasiswa, ditandatangani APP_KEY
+     * sehingga tidak bisa ditebak dari ID saja.
+     */
+    public function getCertificateCodeAttribute(): string
+    {
+        $hash = strtoupper(substr(hash_hmac('sha256', "cert:{$this->id}", (string) config('app.key')), 0, 8));
+
+        return 'OSQ-'.now()->format('y').'-'.$hash;
     }
 }

@@ -1,154 +1,212 @@
+@php
+    $program = config('ospek.program');
+    $signatories = config('ospek.signatories');
+    $issued = $issuedAt ?? now();
+
+    // Saat APP_URL masih localhost (development), tampilkan URL verifikasi
+    // publik yang netral di sertifikat agar dokumen tidak memuat alamat lokal.
+    $verifyUrl = url('/verifikasi/'.$status['code']);
+    $publicUrl = str_contains($verifyUrl, 'localhost') || str_contains($verifyUrl, '127.0.0.1')
+        ? 'ospekquest.umk.ac.id/verifikasi/'.$status['code']
+        : $verifyUrl;
+@endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="id">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sijil Tamat Orientasi - {{ $user->name }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sertifikat · {{ $user->name }}</title>
+    <meta name="robots" content="noindex">
 
-    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+
+    @vite(['resources/css/app.css'])
 
     <style>
-        .font-cinzel {
-            font-family: 'Cinzel', serif;
-        }
-        .brutal-border-4 {
-            border: 4px solid #1E1E1E;
-        }
-        .brutal-border-gold {
-            border: 6px double #C78C35;
-        }
+        .cert-serif { font-family: 'Cormorant Garamond', Georgia, serif; }
+
         @media print {
-            .no-print {
-                display: none !important;
+            @page { size: A4 landscape; margin: 6mm; }
+
+            /* Isi sertifikat mengisi tinggi halaman cetak supaya tidak ada
+               sisa ruang kosong besar di bawah dokumen. */
+            html, body {
+                height: 100%;
+                margin: 0;
+                padding: 0;
+                background: #fff;
             }
+
             body {
-                background: white !important;
-                padding: 0 !important;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
-            .certificate-container {
+
+            .cert-sheet {
+                width: 100% !important;
+                max-width: none !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
                 box-shadow: none !important;
-                border: 4px solid black !important;
-                max-width: 100% !important;
             }
         }
     </style>
 </head>
-<body class="bg-[#DCDAD5] min-h-screen p-4 sm:p-8 flex flex-col items-center justify-center font-sans">
+<body class="min-h-screen bg-canvas p-4 sm:p-6 print:bg-white print:p-0">
 
-    <!-- Top Action Toolbar (Hidden when printing) -->
-    <div class="no-print max-w-4xl w-full mb-6 flex items-center justify-between gap-4">
-        <a href="{{ route('achievements') }}" class="px-4 py-2 bg-white hover:bg-neutral-100 border-2 border-black rounded-xl font-bold text-xs uppercase shadow-[3px_3px_0px_0px_#000] flex items-center gap-2">
-            <span>←</span>
-            <span>Kembali ke Pencapaian</span>
+    {{-- Toolbar --}}
+    <div class="no-print mx-auto mb-4 flex w-full max-w-5xl flex-wrap items-center justify-between gap-2">
+        <a href="{{ route('achievements') }}" class="btn btn-ghost btn-sm">
+            <x-icon name="arrow-left" class="size-3.5" :stroke="2.2" />
+            Pencapaian
         </a>
 
-        <div class="flex items-center gap-3">
-            <button type="button" onclick="window.print()" class="px-6 py-2.5 bg-[#F9D976] hover:bg-amber-300 border-2 border-black rounded-xl font-black text-xs uppercase shadow-[3px_3px_0px_0px_#000] flex items-center gap-2 cursor-pointer">
-                <span>🖨️</span>
-                <span>Cetak / Muat Turun Sijil PDF</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- Master Certificate Container -->
-    <div class="certificate-container w-full max-w-4xl bg-[#FFFDF9] brutal-border-4 rounded-3xl p-8 sm:p-14 shadow-[8px_8px_0px_0px_#1E1E1E] relative overflow-hidden text-center">
-
-        <!-- Outer Double Border Ornament -->
-        <div class="absolute inset-4 brutal-border-gold rounded-2xl pointer-events-none"></div>
-
-        <!-- Corner Ornaments -->
-        <div class="absolute top-6 left-6 text-2xl text-amber-600">⚜️</div>
-        <div class="absolute top-6 right-6 text-2xl text-amber-600">⚜️</div>
-        <div class="absolute bottom-6 left-6 text-2xl text-amber-600">⚜️</div>
-        <div class="absolute bottom-6 right-6 text-2xl text-amber-600">⚜️</div>
-
-        <!-- Certificate Header -->
-        <div class="flex flex-col items-center mb-6 relative z-10">
-            <div class="w-16 h-16 rounded-2xl bg-[#F9D976] border-2 border-black flex items-center justify-center text-3xl shadow-[3px_3px_0px_0px_#000] mb-3">
-                🎓
-            </div>
-            <span class="font-cinzel text-xs uppercase tracking-widest text-amber-900 font-bold block mb-1">
-                Universiti Kebangsaan • Pejabat Hal Ehwal Pelajar
-            </span>
-            <h1 class="font-cinzel text-3xl sm:text-4xl font-black text-neutral-900 tracking-tight leading-tight uppercase">
-                Sijil Tamat Orientasi
-            </h1>
-            <span class="text-xs font-black uppercase tracking-wider text-amber-700 bg-amber-100 border border-black/20 px-3 py-0.5 rounded-full mt-2">
-                Program Orientasi OspekQuest Sesi 2025/2026
-            </span>
-        </div>
-
-        <!-- Certificate Body -->
-        <div class="max-w-2xl mx-auto space-y-4 my-8 relative z-10">
-            <p class="text-xs uppercase font-extrabold tracking-widest text-neutral-500">
-                Dengan ini diperakui dengan bangganya bahawa
-            </p>
-
-            <!-- Student Name -->
-            <div class="py-2 border-b-2 border-dashed border-neutral-300">
-                <h2 class="text-3xl sm:text-4xl font-display font-black text-neutral-950 tracking-wide">
-                    {{ $user->name }}
-                </h2>
-                <span class="font-mono text-sm font-bold text-neutral-600 block mt-1">
-                    No. Matrik: {{ $user->nim }}
+        <div class="flex flex-wrap items-center gap-1.5">
+            <a href="{{ route('certificate.verify', $status['code']) }}" class="btn btn-ghost btn-sm">
+                <x-icon name="shield" class="size-3.5" :stroke="2" />
+                Halaman verifikasi
+            </a>
+            @if ($status['eligible'])
+                <button type="button" onclick="window.print()" class="btn btn-primary btn-sm">
+                    <x-icon name="certificate" class="size-3.5" :stroke="2" />
+                    Cetak / Simpan PDF
+                </button>
+            @else
+                <span class="stamp bg-vermilion/15 text-vermilion-deep">
+                    <x-icon name="lock" class="size-3" :stroke="2.2" />
+                    Terkunci
                 </span>
-            </div>
-
-            <p class="text-xs sm:text-sm font-semibold text-neutral-700 leading-relaxed pt-2">
-                Daripada <strong>{{ $user->faculty }}</strong>, Program <strong>{{ $user->major }}</strong>, telah berjaya menamatkan kesemua modul kembara orientasi dengan menunjukkan sahsiah diri yang tinggi, semangat berpasukan kumpulan <strong>{{ $user->group_name }}</strong>, serta pencapaian gred cemerlang dalam modul etika, kepimpinan, dan Sistem SKS.
-            </p>
-
-            <div class="inline-flex items-center gap-3 px-4 py-2 bg-[#FFF3D6] border-2 border-black rounded-xl text-xs font-black text-amber-950 shadow-[2px_2px_0px_0px_#000]">
-                <span>⭐ Status: Graduan Harapan Orientasi</span>
-                <span>•</span>
-                <span>Mata XP Terkumpul: {{ number_format($user->xp) }} XP</span>
-            </div>
+            @endif
         </div>
-
-        <!-- Verification & Signatures Section -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 items-end pt-8 mt-6 border-t-2 border-neutral-200 relative z-10">
-
-            <!-- Dean Signature -->
-            <div class="text-center sm:text-left">
-                <div class="font-display font-bold text-lg text-neutral-800 italic mb-1">
-                    Prof. Dr. Ahmad Zulkifli
-                </div>
-                <div class="w-36 h-0.5 bg-black mb-1 mx-auto sm:mx-0"></div>
-                <span class="text-[10px] font-black uppercase text-neutral-600 block">Dekan Hal Ehwal Pelajar</span>
-                <span class="text-[9px] text-neutral-400">Universiti Kebangsaan</span>
-            </div>
-
-            <!-- Official Gold Seal -->
-            <div class="flex flex-col items-center justify-center">
-                <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-300 to-amber-600 border-3 border-black flex flex-col items-center justify-center shadow-[4px_4px_0px_0px_#000] rotate-12">
-                    <span class="text-2xl">🎖️</span>
-                    <span class="text-[7px] font-black uppercase text-black tracking-widest leading-none mt-0.5">METERAI RASMI</span>
-                </div>
-                <span class="text-[9px] font-mono font-bold text-neutral-500 mt-2">Tarikh: {{ now()->translatedFormat('d F Y') }}</span>
-            </div>
-
-            <!-- Vice Chancellor Signature -->
-            <div class="text-center sm:text-right">
-                <div class="font-display font-bold text-lg text-neutral-800 italic mb-1">
-                    Tan Sri Dato' Seri Halim
-                </div>
-                <div class="w-36 h-0.5 bg-black mb-1 mx-auto sm:ml-auto sm:mr-0"></div>
-                <span class="text-[10px] font-black uppercase text-neutral-600 block">Naib Canselor Universiti</span>
-                <span class="text-[9px] text-neutral-400">Penaung Majlis Orientasi</span>
-            </div>
-
-        </div>
-
-        <!-- Digital Verification Barcode / Footer -->
-        <div class="mt-8 pt-4 border-t border-dashed border-neutral-300 flex flex-col sm:flex-row items-center justify-between text-[10px] font-mono font-bold text-neutral-500 gap-2 relative z-10">
-            <span>KOD VERIFIKASI: OSPEK-2025-{{ strtoupper(substr(md5($user->id . 'ospek'), 0, 8)) }}</span>
-            <span>DIJANAKAN SECARA AUTOMASI OLEH SISTEM OSPEKQUEST</span>
-        </div>
-
     </div>
 
+    @unless ($status['eligible'])
+        <div class="no-print mx-auto mb-4 w-full max-w-5xl rounded-lg border-2 border-ink bg-amber/25 p-3.5 shadow-[var(--shadow-flat-sm)]">
+            <p class="flex items-start gap-2 text-[0.74rem] font-semibold leading-relaxed text-ink-soft">
+                <x-icon name="warning" class="mt-px size-4 shrink-0 text-vermilion-deep" :stroke="2" />
+                <span>
+                    Sertifikat baru dapat dicetak setelah seluruh {{ $status['total'] }} modul selesai.
+                    Progres Anda saat ini <strong class="text-ink">{{ $status['completed'] }}/{{ $status['total'] }}</strong> —
+                    kurang {{ $status['missing'] }} modul lagi.
+                    Halaman ini tetap ditampilkan sebagai pratinjau.
+                </span>
+            </p>
+        </div>
+    @endunless
+
+    {{-- Lembar sertifikat --}}
+    <article class="cert-sheet relative mx-auto w-full max-w-5xl overflow-hidden rounded-lg border-[3px] border-ink bg-paper p-1 shadow-[var(--shadow-flat-xl)] print:shadow-none">
+        {{-- Bingkai ganda --}}
+        <div class="relative border-2 border-ink/70 p-5 sm:p-8">
+            {{-- Ornamen sudut geometris, bukan emoji --}}
+            <div class="pointer-events-none absolute left-2 top-2 size-6 border-l-2 border-t-2 border-ink/60"></div>
+            <div class="pointer-events-none absolute right-2 top-2 size-6 border-r-2 border-t-2 border-ink/60"></div>
+            <div class="pointer-events-none absolute bottom-2 left-2 size-6 border-b-2 border-l-2 border-ink/60"></div>
+            <div class="pointer-events-none absolute bottom-2 right-2 size-6 border-b-2 border-r-2 border-ink/60"></div>
+
+            {{-- Kepala --}}
+            <header class="flex flex-col items-center text-center">
+                <div class="flex items-center gap-2">
+                    <span class="grid size-9 place-items-center rounded-sm border-2 border-ink bg-amber">
+                        <x-icon name="compass" class="size-5" :stroke="2" />
+                    </span>
+                    <div class="text-left">
+                        <p class="font-display text-[0.82rem] font-extrabold uppercase leading-none tracking-[0.1em]">
+                            {{ $program['university'] }}
+                        </p>
+                        <p class="mt-0.5 text-[0.58rem] font-bold uppercase tracking-[0.14em] text-ink-faint">
+                            {{ $program['faculty'] }} · {{ $program['study_program'] }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-4 h-0.5 w-24 bg-ink"></div>
+
+                <h1 class="cert-serif mt-3 text-[1.7rem] font-bold uppercase leading-none tracking-[0.06em] sm:text-[2.3rem]">
+                    Sertifikat Orientasi
+                </h1>
+                <p class="mt-1 text-[0.6rem] font-extrabold uppercase tracking-[0.2em] text-ink-faint">
+                    Mahasiswa Baru · Tahun Akademik {{ $program['academic_year'] }}
+                </p>
+            </header>
+
+            {{-- Badan --}}
+            <div class="mx-auto mt-5 max-w-2xl text-center">
+                <p class="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-ink-faint">
+                    Diberikan kepada
+                </p>
+
+                <p class="cert-serif mt-1.5 text-[1.6rem] font-bold leading-tight sm:text-[2.1rem]">
+                    {{ $user->name }}
+                </p>
+
+                <p class="mt-0.5 font-mono text-[0.72rem] font-bold text-ink-faint">
+                    NIM {{ $user->nim }}
+                </p>
+
+                <p class="mt-3 text-[0.74rem] font-medium leading-relaxed text-ink-soft text-pretty">
+                    atas keberhasilan menyelesaikan seluruh rangkaian
+                    <strong class="text-ink">{{ $program['name'] }}</strong> — program orientasi berbasis gamifikasi
+                    {{ $program['study_program'] }}, {{ $program['faculty'] }},
+                    {{ $program['university'] }} —
+                    dengan menyelesaikan {{ $completedQuests }} modul, kuis akademik, dan refleksi yang dipersyaratkan.
+                </p>
+
+                <div class="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+                    <span class="stamp bg-amber/40">Tema: Smart Ecosystems</span>
+                    <span class="stamp bg-paper-dim">Subtema: Smart Education</span>
+                    <span class="stamp bg-teal/20">Peringkat {{ $rank }} / {{ $participants }}</span>
+                </div>
+            </div>
+
+            {{-- Tanda tangan & segel --}}
+            <div class="mt-6 grid items-end gap-4 border-t-2 border-dashed border-ink/30 pt-4 sm:grid-cols-3">
+                <div class="text-center sm:text-left">
+                    <p class="cert-serif text-[0.95rem] font-bold italic leading-tight">{{ $signatories['academic']['name'] }}</p>
+                    <div class="mx-auto mt-1 h-px w-40 bg-ink sm:mx-0"></div>
+                    <p class="mt-1 text-[0.56rem] font-extrabold uppercase tracking-[0.1em] text-ink-faint">{{ $signatories['academic']['role'] }}</p>
+                    <p class="text-[0.54rem] font-semibold text-ink-faint">{{ $signatories['academic']['identifier'] }}</p>
+                </div>
+
+                <div class="flex flex-col items-center">
+                    {{-- Segel: geometris, bukan gradient blur --}}
+                    <div class="relative grid size-20 place-items-center rounded-full border-[3px] border-ink bg-amber">
+                        <div class="absolute inset-1.5 rounded-full border border-dashed border-ink/60"></div>
+                        <div class="text-center">
+                            <x-icon name="shield" class="mx-auto size-5" :stroke="2" />
+                            <p class="mt-0.5 text-[0.42rem] font-extrabold uppercase leading-none tracking-[0.1em]">Sah</p>
+                        </div>
+                    </div>
+                    <p class="mt-1.5 font-mono text-[0.58rem] font-bold text-ink-faint">
+                        {{ $status['code'] }}
+                    </p>
+                </div>
+
+                <div class="text-center sm:text-right">
+                    <p class="cert-serif text-[0.95rem] font-bold italic leading-tight">{{ $signatories['committee']['name'] }}</p>
+                    <div class="mx-auto mt-1 h-px w-40 bg-ink sm:ml-auto sm:mr-0"></div>
+                    <p class="mt-1 text-[0.56rem] font-extrabold uppercase tracking-[0.1em] text-ink-faint">{{ $signatories['committee']['role'] }}</p>
+                    <p class="text-[0.54rem] font-semibold text-ink-faint">{{ $signatories['committee']['identifier'] }}</p>
+                </div>
+            </div>
+
+            {{-- Kaki --}}
+            <footer class="mt-4 flex flex-col items-center justify-between gap-1 border-t-2 border-ink/15 pt-2.5 text-center sm:flex-row sm:text-left">
+                <p class="text-[0.56rem] font-semibold text-ink-faint">
+                    Diterbitkan {{ $issued->translatedFormat('d F Y') }} · Kudus, Jawa Tengah
+                </p>
+                <p class="font-mono text-[0.54rem] font-bold text-ink-faint">
+                    Verifikasi: {{ $publicUrl }}
+                </p>
+            </footer>
+        </div>
+    </article>
+
+    <p class="no-print mx-auto mt-3 max-w-5xl text-center text-[0.62rem] font-semibold leading-relaxed text-ink-faint">
+        Gunakan "Cetak / Simpan PDF" lalu pilih <em>Landscape</em> dan nonaktifkan header-footer browser untuk hasil terbaik.
+    </p>
 </body>
 </html>

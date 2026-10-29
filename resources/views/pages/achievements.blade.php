@@ -1,229 +1,170 @@
 @extends('layouts.app')
 
-@section('title', 'Pencapaian & Sijil Orientasi')
+@section('title', 'Pencapaian')
+@section('page-title', 'Pencapaian & Lencana')
+@section('page-kicker', $unlockedCount.' / '.$totalAchievements.' lencana terbuka')
 
 @section('content')
-<div class="p-5 md:p-8 flex flex-col gap-6">
+<div class="flex flex-col gap-4">
 
-    <!-- BEGIN: Header & Quick Stats -->
-    <header class="flex flex-col gap-5 border-b-2 border-black/10 pb-5">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-                <div class="flex items-center gap-2 mb-1">
-                    <a href="{{ route('dashboard') }}" class="text-xs font-black text-[#E78B24] hover:underline flex items-center gap-1">
-                        <span>← Kembali ke Papan Pemuka</span>
+    <section class="flex flex-wrap items-end justify-between gap-3">
+        <div class="min-w-0">
+            <h1 class="font-display text-[1.45rem] font-extrabold leading-tight tracking-tight sm:text-[1.7rem]">
+                Yang sudah Anda raih.
+            </h1>
+            <p class="mt-0.5 max-w-xl text-[0.78rem] font-medium leading-relaxed text-ink-soft">
+                Lencana dihitung otomatis dari data nyata — modul selesai, kuis lulus, rentetan, dan tiket terjawab.
+            </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-1.5">
+            <span class="stamp bg-paper">
+                <x-icon name="check-circle" class="size-3" :stroke="2.2" />
+                {{ $unlockedCount }} selesai
+            </span>
+            <span class="stamp bg-paper">
+                <x-icon name="trending" class="size-3" :stroke="2.2" />
+                {{ $inProgressCount }} berjalan
+            </span>
+            <span class="stamp bg-paper">
+                <x-icon name="lock" class="size-3" :stroke="2.2" />
+                {{ $lockedCount }} terkunci
+            </span>
+        </div>
+    </section>
+
+    {{-- Ringkasan metrik nyata --}}
+    <section class="grid grid-cols-2 gap-2.5 lg:grid-cols-4" aria-label="Metrik pencapaian">
+        <x-stat-tile :value="$metrics['quests_completed']" label="Modul Selesai" icon="map" tone="teal" />
+        <x-stat-tile :value="$metrics['quizzes_passed']" label="Kuis Lulus" icon="quiz" tone="paper" />
+        <x-stat-tile :value="$metrics['streak_days'].' hari'" label="Rentetan" icon="flame" tone="amber" />
+        <x-stat-tile :value="number_format($metrics['total_xp'], 0, ',', '.')" label="Total XP" icon="bolt" tone="paper" :caption="'+'.$badgeXpTotal.' XP dari lencana'" />
+    </section>
+
+    {{-- Sertifikat --}}
+    <section class="overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-[var(--shadow-flat-lg)]">
+        <div class="grid gap-0 sm:grid-cols-[1fr_auto]">
+            <div class="p-4 sm:p-5">
+                <span class="stamp {{ $certificate['eligible'] ? 'bg-teal text-white' : 'bg-paper-dim' }}">
+                    <x-icon :name="$certificate['eligible'] ? 'check-circle' : 'lock'" class="size-3" :stroke="2.2" />
+                    {{ $certificate['eligible'] ? 'Siap diunduh' : 'Belum memenuhi syarat' }}
+                </span>
+
+                <h2 class="mt-2 font-display text-[1.1rem] font-extrabold leading-tight">
+                    Sertifikat Orientasi Mahasiswa Baru
+                </h2>
+                <p class="mt-1 max-w-lg text-[0.76rem] font-medium leading-relaxed text-ink-soft">
+                    @if ($certificate['eligible'])
+                        Seluruh {{ $certificate['total'] }} modul selesai. Sertifikat Anda memuat kode verifikasi publik yang dapat dicek pihak lain.
+                    @else
+                        Selesaikan {{ $certificate['missing'] }} modul lagi ({{ $certificate['completed'] }}/{{ $certificate['total'] }}) untuk membuka sertifikat.
+                    @endif
+                </p>
+
+                <div class="mt-2.5 flex items-center gap-2">
+                    <x-progress :value="$certificate['percentage']" tone="{{ $certificate['eligible'] ? 'teal' : 'amber' }}" class="max-w-xs flex-1" label="Syarat sertifikat" />
+                    <span class="numeric text-[0.7rem] font-bold">{{ $certificate['percentage'] }}%</span>
+                </div>
+
+                <div class="mt-3 flex flex-wrap gap-2">
+                    @if ($certificate['eligible'])
+                        <a href="{{ route('certificate') }}" class="btn btn-primary">
+                            <x-icon name="certificate" class="size-4" :stroke="2" />
+                            Buka Sertifikat
+                        </a>
+                    @else
+                        <a href="{{ route('quests.index') }}" class="btn btn-primary">
+                            <x-icon name="map" class="size-4" :stroke="2" />
+                            Lanjutkan Modul
+                        </a>
+                    @endif
+                    <a href="{{ route('certificate.verify', $certificate['code']) }}" class="btn btn-ghost btn-sm">
+                        <x-icon name="shield" class="size-3.5" :stroke="2" />
+                        Cek kode verifikasi
                     </a>
                 </div>
-                <h2 class="text-2xl sm:text-3xl font-display font-black text-[#1E1E1E] tracking-tight">
-                    Pencapaian, Lencana & Sijil 🏆
-                </h2>
-                <p class="text-xs sm:text-sm font-semibold text-neutral-600 mt-0.5">
-                    Koleksi anugerah kehormat dan sijil pengiktirafan sepanjang minggu orientasi.
-                </p>
             </div>
 
-            <!-- Streak Pill -->
-            <div class="bg-[#FFE6AF] brutal-border rounded-2xl px-4 py-2 shadow-brutal-sm flex items-center gap-2.5 self-start sm:self-auto">
-                <span class="text-2xl animate-bounce">🔥</span>
-                <div>
-                    <span class="block text-[9px] font-black uppercase text-neutral-500 tracking-wider leading-none">Rentetan Aktif</span>
-                    <span class="text-xs font-black text-neutral-900 leading-tight">{{ $user->streak_days }} Hari Berturut-turut!</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 3 Mini Bento Quick Stats -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4" data-purpose="stats-summary">
-            <!-- Mini Card 1: Unlocked Achievements -->
-            <div class="bg-[#FFF9EB] brutal-border rounded-2xl p-4 shadow-brutal flex items-center gap-4 hover:-translate-y-0.5 transition-transform">
-                <div class="w-12 h-12 rounded-xl bg-neo-yellow brutal-border flex items-center justify-center shrink-0 shadow-brutal-sm text-2xl">
-                    🏆
-                </div>
-                <div class="min-w-0 flex-1">
-                    <span class="block text-[10px] font-black text-neutral-500 uppercase tracking-wider">Status Pencapaian</span>
-                    <div class="flex items-baseline gap-1.5 mt-0.5">
-                        <span class="font-display font-black text-2xl text-neutral-900">{{ $unlockedCount }}</span>
-                        <span class="text-xs font-bold text-neutral-600">/ {{ $totalAchievements }} Dibuka</span>
-                    </div>
-                    <div class="w-full bg-neutral-200 brutal-border rounded-full h-2 mt-2 overflow-hidden">
-                        <div class="bg-[#E78B24] h-full rounded-full" style="width: {{ $totalAchievements > 0 ? ($unlockedCount / $totalAchievements) * 100 : 0 }}%;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Mini Card 2: XP Rewards -->
-            <div class="bg-[#F5F4F0] brutal-border rounded-2xl p-4 shadow-brutal flex items-center gap-4 hover:-translate-y-0.5 transition-transform">
-                <div class="w-12 h-12 rounded-xl bg-[#A5C9CA] brutal-border flex items-center justify-center shrink-0 shadow-brutal-sm text-2xl">
-                    ⚡
-                </div>
-                <div class="min-w-0 flex-1">
-                    <span class="block text-[10px] font-black text-neutral-500 uppercase tracking-wider">Mata Ganjaran</span>
-                    <div class="flex items-baseline gap-1.5 mt-0.5">
-                        <span class="font-display font-black text-2xl text-neutral-900">{{ number_format($user->xp) }}</span>
-                        <span class="text-xs font-bold text-neutral-600">XP Diperoleh</span>
-                    </div>
-                    <span class="text-[10px] font-extrabold text-emerald-700 block mt-1">+280 XP lagi ke Tahap Seterusnya</span>
-                </div>
-            </div>
-
-            <!-- Mini Card 3: Badges Collection -->
-            <div class="bg-[#FFE6AF] brutal-border rounded-2xl p-4 shadow-brutal flex items-center gap-4 hover:-translate-y-0.5 transition-transform">
-                <div class="w-12 h-12 rounded-xl bg-[#FA7970] brutal-border flex items-center justify-center shrink-0 shadow-brutal-sm text-2xl text-white">
-                    🎖️
-                </div>
-                <div class="min-w-0 flex-1">
-                    <span class="block text-[10px] font-black text-neutral-600 uppercase tracking-wider">Koleksi Lencana</span>
-                    <div class="flex items-baseline gap-1.5 mt-0.5">
-                        <span class="font-display font-black text-2xl text-neutral-900">{{ $unlockedBadgesCount }}</span>
-                        <span class="text-xs font-bold text-neutral-600">/ 6 Dikumpul</span>
-                    </div>
-                    <span class="text-[10px] font-extrabold text-neutral-800 block mt-1">Status: Calon Graduan Cemerlang</span>
-                </div>
-            </div>
-        </div>
-    </header>
-    <!-- END: Header & Quick Stats -->
-
-    <!-- BEGIN: Official Certificate Teaser Banner -->
-    <div class="bg-gradient-to-r from-amber-100 via-amber-50 to-orange-100 brutal-border-3 rounded-3xl p-6 sm:p-8 shadow-brutal-lg flex flex-col lg:flex-row items-center justify-between gap-6 relative overflow-hidden">
-        <div class="flex items-center gap-5">
-            <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white brutal-border flex items-center justify-center text-3xl sm:text-4xl shadow-brutal shrink-0 rotate-[-2deg]">
-                📜
-            </div>
-            <div>
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2.5 py-0.5 bg-black text-white text-[10px] font-black uppercase rounded-md">Dokumen Rasmi Berkanun</span>
-                    <span class="text-xs font-bold text-amber-900">• Sesi 2025/2026</span>
-                </div>
-                <h3 class="font-display font-black text-xl sm:text-2xl text-neutral-900 leading-tight">
-                    Sijil Tamat Orientasi Siswa Baharu
-                </h3>
-                <p class="text-xs sm:text-sm font-semibold text-neutral-700 mt-1 max-w-xl">
-                    Diperakui sah oleh Pejabat Hal Ehwal Pelajar dan Naib Canselor universiti dengan nombor siri berkanun dan kod verifikasi digital.
+            {{-- Tiket sobek dekoratif --}}
+            <div class="hidden w-24 flex-col items-center justify-center border-l-2 border-dashed border-ink/40 bg-amber/25 p-3 sm:flex">
+                <span class="grid size-12 place-items-center rounded-full border-2 border-ink bg-paper">
+                    <x-icon name="medal" class="size-6" :stroke="1.9" />
+                </span>
+                <p class="mt-2 text-center text-[0.54rem] font-extrabold uppercase leading-tight tracking-[0.1em] text-ink/70">
+                    Kode<br>{{ $certificate['code'] }}
                 </p>
             </div>
         </div>
+    </section>
 
-        <div class="flex items-center gap-3 w-full lg:w-auto shrink-0">
-            <a href="{{ route('certificate') }}" class="w-full sm:w-auto px-6 py-3.5 bg-[#E78B24] hover:bg-[#c9741a] text-white font-display font-black text-xs sm:text-sm uppercase tracking-wider brutal-border rounded-xl shadow-brutal-sm brutal-btn-press text-center flex items-center justify-center gap-2">
-                <span>Buka & Cetak Sijil</span>
-                <span>➔</span>
-            </a>
-        </div>
-    </div>
-    <!-- END: Official Certificate Banner -->
-
-    <!-- BEGIN: Achievements Challenges Grid -->
-    <section class="space-y-4" data-purpose="achievements-section">
-        <div class="flex items-center justify-between flex-wrap gap-2">
-            <div class="flex items-center gap-2">
-                <h3 class="font-display font-black text-lg sm:text-xl text-[#1E1E1E]">Senarai Cabaran & Pencapaian</h3>
-                <span class="px-2 py-0.5 bg-neutral-900 text-white rounded-md text-[10px] font-black tracking-wider uppercase">{{ $totalAchievements }} Rekod</span>
-            </div>
-            <div class="flex items-center gap-2 text-xs font-bold text-neutral-600">
-                <span class="flex items-center gap-1">
-                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-black inline-block"></span>
-                    <span>{{ $unlockedCount }} Selesai</span>
-                </span>
-                <span>•</span>
-                <span class="flex items-center gap-1">
-                    <span class="w-2.5 h-2.5 rounded-full bg-amber-400 border border-black inline-block"></span>
-                    <span>{{ $inProgressCount }} Dalam Proses</span>
-                </span>
-                <span>•</span>
-                <span class="flex items-center gap-1">
-                    <span class="w-2.5 h-2.5 rounded-full bg-neutral-400 border border-black inline-block"></span>
-                    <span>{{ $lockedCount }} Terkunci</span>
-                </span>
-            </div>
+    {{-- Daftar lencana --}}
+    <section>
+        <div class="mb-2 flex items-center justify-between gap-2">
+            <h2 class="font-display text-[1rem] font-extrabold">Koleksi Lencana</h2>
+            <span class="stamp bg-paper">{{ $unlockedCount }} / {{ $totalAchievements }}</span>
         </div>
 
-        <!-- 2-Column Responsive Bento Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            @foreach ($achievements as $ach)
-                <article class="bg-[#FFF9EB] brutal-border rounded-2xl p-5 shadow-brutal flex flex-col justify-between hover:-translate-y-0.5 transition-all">
-                    <div>
-                        <div class="flex items-start justify-between gap-3 mb-3">
-                            <div class="flex items-center gap-3">
-                                <div class="w-12 h-12 rounded-xl bg-neo-yellow brutal-border flex items-center justify-center text-2xl shadow-brutal-sm shrink-0">
-                                    {{ $ach->icon }}
-                                </div>
-                                <div>
-                                    <h4 class="font-display font-black text-base text-neutral-900 leading-tight">
-                                        {{ $ach->title }}
-                                    </h4>
-                                    <p class="text-xs font-semibold text-neutral-600 mt-0.5">
-                                        {{ $ach->description }}
-                                    </p>
-                                </div>
-                            </div>
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            @foreach ($rows as $row)
+                @php
+                    $ach = $row['achievement'];
+                    $unlocked = $row['is_unlocked'];
+                @endphp
 
-                            @if ($ach->is_unlocked)
-                                <span class="px-2.5 py-1 bg-emerald-400 text-neutral-900 brutal-border rounded-lg text-[10px] font-black uppercase tracking-wider shadow-brutal-sm shrink-0 flex items-center gap-1">
-                                    ✓ SELESAI
-                                </span>
-                            @else
-                                <span class="px-2.5 py-1 bg-amber-200 text-neutral-900 brutal-border rounded-lg text-[10px] font-black uppercase tracking-wider shadow-brutal-sm shrink-0">
-                                    {{ $ach->current_steps }} / {{ $ach->total_steps }}
-                                </span>
-                            @endif
-                        </div>
+                <article class="relative flex flex-col rounded-lg border-2 border-ink {{ $unlocked ? 'bg-paper shadow-[var(--shadow-flat)]' : 'border-dashed bg-paper-dim/60 shadow-none' }}">
+                    <div class="flex items-start gap-2.5 p-3.5">
+                        {{-- Lencana perisai: satu SVG utuh, ikon aman di area tengah --}}
+                        <x-badge
+                            :icon="$ach->icon"
+                            :tone="$ach->badge_color"
+                            :unlocked="$unlocked"
+                            class="size-12 shrink-0"
+                            :label="$ach->title"
+                        />
 
-                        <div class="mt-4 space-y-1.5">
-                            <div class="flex justify-between text-[11px] font-black text-neutral-700">
-                                <span>Kemajuan Cabaran</span>
-                                <span>{{ $ach->current_steps }} / {{ $ach->total_steps }} ({{ $ach->progress_percentage }}%)</span>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-start justify-between gap-1.5">
+                                <h3 class="font-display text-[0.84rem] font-bold leading-tight">{{ $ach->title }}</h3>
+                                @if ($unlocked)
+                                    <span class="grid size-5 shrink-0 place-items-center rounded-full border-[1.5px] border-ink bg-teal text-white">
+                                        <x-icon name="check" class="size-3" :stroke="3" />
+                                    </span>
+                                @else
+                                    <span class="grid size-5 shrink-0 place-items-center rounded-full border-[1.5px] border-ink/40 text-ink-faint">
+                                        <x-icon name="lock" class="size-2.5" :stroke="2.4" />
+                                    </span>
+                                @endif
                             </div>
-                            <div class="w-full bg-white brutal-border rounded-full h-3 p-[1px] overflow-hidden">
-                                <div class="h-full rounded-full transition-all duration-500 {{ $ach->is_unlocked ? 'bg-emerald-400' : 'bg-[#E78B24]' }}" style="width: {{ $ach->progress_percentage }}%;"></div>
-                            </div>
+                            <p class="mt-0.5 text-[0.68rem] font-medium leading-relaxed text-ink-soft">{{ $ach->description }}</p>
                         </div>
                     </div>
 
-                    <div class="mt-4 pt-3 border-t-2 border-black/10 flex items-center justify-between text-xs">
-                        <span class="text-[11px] font-bold text-neutral-500">Kategori: {{ $ach->category }}</span>
-                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-neo-yellow brutal-border rounded-md text-[11px] font-black text-neutral-900 shadow-brutal-sm">
-                            <span>+{{ $ach->xp_reward }} XP</span>
-                        </span>
+                    <div class="mt-auto border-t-2 border-dashed border-ink/25 px-3.5 py-2.5">
+                        <div class="flex items-center justify-between gap-2 text-[0.62rem] font-extrabold uppercase tracking-[0.08em]">
+                            <span class="text-ink-faint">{{ $ach->metric->label() }}</span>
+                            <span class="numeric text-ink">
+                                @if ($row['total_steps'] >= 100)
+                                    {{ number_format($row['current_steps'], 0, ',', '.') }} / {{ number_format($row['total_steps'], 0, ',', '.') }}
+                                @else
+                                    {{ $row['current_steps'] }} / {{ $row['total_steps'] }}
+                                @endif
+                            </span>
+                        </div>
+                        <x-progress :value="$row['percentage']" tone="{{ $unlocked ? 'teal' : 'amber' }}" height="h-1.5" class="mt-1.5" />
+                        <div class="mt-1.5 flex items-center justify-between gap-2">
+                            <span class="stamp bg-amber/40 text-[0.54rem]">+{{ $ach->xp_reward }} XP</span>
+                            <span class="text-[0.58rem] font-bold text-ink-faint">
+                                @if ($unlocked)
+                                    Terbuka {{ $row['unlocked_at']?->translatedFormat('d M Y') }}
+                                @else
+                                    {{ $row['percentage'] }}%
+                                @endif
+                            </span>
+                        </div>
                     </div>
                 </article>
             @endforeach
         </div>
     </section>
-    <!-- END: Achievements Challenges Grid -->
-
-    <!-- BEGIN: Badges Showcase (Koleksi Lencana) -->
-    <section class="space-y-4 pt-4 border-t-2 border-black/10">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <span class="text-xl">🎖️</span>
-                <h3 class="font-display font-black text-lg sm:text-xl text-[#1E1E1E]">Koleksi Lencana Kejuaraan</h3>
-            </div>
-            <span class="text-xs font-bold text-neutral-600">Dikumpul {{ $unlockedBadgesCount }} daripada 6</span>
-        </div>
-
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            @foreach ($badges as $badge)
-                <div class="p-4 rounded-2xl brutal-border text-center flex flex-col items-center justify-between shadow-brutal hover:-translate-y-1 transition-all {{ $badge['is_unlocked'] ? 'bg-white' : 'bg-neutral-100 opacity-60' }}">
-                    <div class="w-14 h-14 rounded-2xl brutal-border flex items-center justify-center text-3xl shadow-brutal-sm mb-3 {{ $badge['color'] }}">
-                        {{ $badge['icon'] }}
-                    </div>
-                    <div>
-                        <span class="text-[9px] font-black uppercase tracking-wider block text-neutral-500 mb-0.5">
-                            {{ $badge['rarity'] }}
-                        </span>
-                        <h5 class="font-display font-black text-xs text-neutral-900 leading-tight">
-                            {{ $badge['name'] }}
-                        </h5>
-                    </div>
-                    <span class="mt-3 px-2 py-0.5 rounded-md text-[9px] font-black uppercase {{ $badge['is_unlocked'] ? 'bg-emerald-200 text-emerald-950 border border-black/20' : 'bg-neutral-200 text-neutral-500' }}">
-                        {{ $badge['is_unlocked'] ? 'Dibuka ✓' : 'Terkunci 🔒' }}
-                    </span>
-                </div>
-            @endforeach
-        </div>
-    </section>
-    <!-- END: Badges Showcase -->
-
 </div>
 @endsection

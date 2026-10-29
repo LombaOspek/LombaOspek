@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\QuestStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -11,12 +12,16 @@ class UserQuest extends Model
         'user_id',
         'quest_id',
         'status',
+        'xp_awarded',
         'completed_at',
+        'note',
     ];
 
     protected function casts(): array
     {
         return [
+            'status' => QuestStatus::class,
+            'xp_awarded' => 'integer',
             'completed_at' => 'datetime',
         ];
     }
