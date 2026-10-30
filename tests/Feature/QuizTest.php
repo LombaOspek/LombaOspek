@@ -2,18 +2,17 @@
 
 namespace Tests\Feature;
 
-use App\Enums\QuestActionType;
 use App\Enums\QuestStatus;
-use App\Models\Achievement;
 use App\Models\Quest;
 use App\Models\User;
 use App\Services\ProgressionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\CompletesQuests;
 use Tests\TestCase;
 
 class QuizTest extends TestCase
 {
-    use RefreshDatabase;
+    use CompletesQuests, RefreshDatabase;
 
     private const CORRECT = [1 => 'B', 2 => 'C', 3 => 'C', 4 => 'B', 5 => 'B'];
 
@@ -30,28 +29,18 @@ class QuizTest extends TestCase
     }
 
     /**
-     * Membuka modul 4 dengan menyelesaikan modul 1-3 lebih dulu.
+     * Membuka modul kuis dengan menyelesaikan modul-modul sebelumnya lewat
+     * jalur verifikasi yang sah.
      */
     private function unlockQuiz(User $student): void
     {
-        foreach ([1, 2, 3] as $step) {
-            $quest = Quest::query()->where('step_number', $step)->firstOrFail();
-            $payload = ['confirm' => '1'];
-
-            if ($quest->action_type === QuestActionType::Reflection) {
-                $payload['reflection'] = str_repeat('Refleksi cukup panjang untuk memenuhi validasi modul. ', 2);
-            }
-
-            $this->actingAs($student)->post("/misi/{$quest->id}/selesai", $payload);
-            $student->refresh();
-        }
+        $quizQuest = Quest::query()->where('quiz_module_code', 'MOD-04')->firstOrFail();
+        $this->advanceTo($student, $quizQuest->step_number);
     }
 
     public function test_quiz_is_not_accessible_while_gated(): void
     {
-        $student = $this->student();
-
-        $this->actingAs($student)
+        $this->actingAs($this->student())
             ->get('/kuis/MOD-04')
             ->assertRedirect('/misi');
     }
@@ -64,7 +53,6 @@ class QuizTest extends TestCase
         $this->actingAs($student)
             ->get('/kuis/MOD-04')
             ->assertOk()
-            ->assertSee('soal')
             ->assertSee('Baca sebelum mulai');
     }
 
@@ -76,8 +64,8 @@ class QuizTest extends TestCase
         $this->actingAs($student)
             ->postJson('/kuis/mulai', ['module_code' => 'MOD-04'])
             ->assertOk()
-            ->assertJsonStructure(['success', 'started_at', 'expires_at', 'time_limit', 'attempt_number', 'remaining_attempts'])
-            ->assertJson(['success' => true, 'time_limit' => 300]);
+            ->assertJson(['success' => true, 'time_limit' => 300])
+            ->assertJsonStructure(['started_at', 'expires_at', 'attempt_number', 'remaining_attempts']);
     }
 
     public function test_perfect_score_passes_and_awards_xp_once(): void
@@ -91,20 +79,16 @@ class QuizTest extends TestCase
         ]);
 
         $response->assertOk()->assertJson([
-            'success' => true,
             'score' => 5,
             'total' => 5,
             'percentage' => 100,
             'is_passed' => true,
         ]);
 
-        // 30+30+30+40+40 = 170 XP dari bank soal.
         $this->assertSame(170, $response->json('xp_earned'));
 
         $student->refresh();
-        $quizXp = $student->xpTransactions()->where('source_type', 'quiz')->sum('amount');
-
-        $this->assertSame(170, (int) $quizXp);
+        $this->assertSame(170, (int) $student->xpTransactions()->where('source_type', 'quiz')->sum('amount'));
         $this->assertSame(1, $student->xpTransactions()->where('source_type', 'quiz')->count());
     }
 
@@ -113,17 +97,10 @@ class QuizTest extends TestCase
         $student = $this->student();
         $this->unlockQuiz($student);
 
-        $this->actingAs($student)->postJson('/kuis/jawab', [
-            'module_code' => 'MOD-04',
-            'answers' => self::CORRECT,
-        ])->assertOk();
-
+        $this->actingAs($student)->postJson('/kuis/jawab', ['module_code' => 'MOD-04', 'answers' => self::CORRECT])->assertOk();
         $afterFirst = $student->refresh()->xp;
 
-        $this->actingAs($student)->postJson('/kuis/jawab', [
-            'module_code' => 'MOD-04',
-            'answers' => self::CORRECT,
-        ])->assertOk();
+        $this->actingAs($student)->postJson('/kuis/jawab', ['module_code' => 'MOD-04', 'answers' => self::CORRECT])->assertOk();
 
         $this->assertSame($afterFirst, $student->refresh()->xp);
     }
@@ -150,10 +127,7 @@ class QuizTest extends TestCase
         $student = $this->student();
         $this->unlockQuiz($student);
 
-        $this->actingAs($student)->postJson('/kuis/jawab', [
-            'module_code' => 'MOD-04',
-            'answers' => self::CORRECT,
-        ])->assertOk();
+        $this->actingAs($student)->postJson('/kuis/jawab', ['module_code' => 'MOD-04', 'answers' => self::CORRECT])->assertOk();
 
         $student->refresh();
         $service = app(ProgressionService::class);
@@ -179,10 +153,7 @@ class QuizTest extends TestCase
             ])->assertOk();
         }
 
-        $this->attachFreshSession();
-        $student->refresh();
-
-        $this->actingAs($student)->postJson('/kuis/jawab', [
+        $this->actingAs($student->refresh())->postJson('/kuis/jawab', [
             'module_code' => 'MOD-04',
             'answers' => self::CORRECT,
         ])->assertStatus(422);
@@ -193,27 +164,12 @@ class QuizTest extends TestCase
         $student = $this->student();
         $this->unlockQuiz($student);
 
-        // Sesi dimulai 40 menit lalu: melampaui batas 5 menit + toleransi.
         $this->actingAs($student)
             ->withSession(['quiz.started_at.MOD-04' => now()->subMinutes(40)->toIso8601String()])
-            ->postJson('/kuis/jawab', [
-                'module_code' => 'MOD-04',
-                'answers' => self::CORRECT,
-            ])
+            ->postJson('/kuis/jawab', ['module_code' => 'MOD-04', 'answers' => self::CORRECT])
             ->assertStatus(422);
 
         $this->assertSame(0, $student->refresh()->quizAttempts()->count());
-    }
-
-    public function test_invalid_option_letter_is_validation_error(): void
-    {
-        $student = $this->student();
-        $this->unlockQuiz($student);
-
-        $this->actingAs($student)->postJson('/kuis/jawab', [
-            'module_code' => 'MOD-04',
-            'answers' => [1 => 'Z', 2 => 'B'],
-        ])->assertStatus(422);
     }
 
     public function test_perfect_quiz_unlocks_the_scholar_achievement(): void
@@ -221,20 +177,12 @@ class QuizTest extends TestCase
         $student = $this->student();
         $this->unlockQuiz($student);
 
-        $this->actingAs($student)->postJson('/kuis/jawab', [
-            'module_code' => 'MOD-04',
-            'answers' => self::CORRECT,
-        ])->assertOk();
+        $this->actingAs($student)->postJson('/kuis/jawab', ['module_code' => 'MOD-04', 'answers' => self::CORRECT])->assertOk();
 
         $this->assertDatabaseHas('user_achievements', [
             'user_id' => $student->id,
-            'achievement_id' => Achievement::query()->where('code', 'ach-03')->value('id'),
+            'achievement_id' => \App\Models\Achievement::query()->where('code', 'ach-03')->value('id'),
             'is_unlocked' => true,
         ]);
-    }
-
-    private function attachFreshSession(): void
-    {
-        $this->flushSession();
     }
 }

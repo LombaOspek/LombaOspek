@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -20,6 +21,7 @@ use Illuminate\Notifications\Notifiable;
     'role',
     'faculty',
     'major',
+    'group_id',
     'group_name',
     'mentor_name',
     'phone',
@@ -27,6 +29,7 @@ use Illuminate\Notifications\Notifiable;
     'level',
     'streak_days',
     'last_active_on',
+    'last_login_at',
     'avatar',
     'avatar_path',
     'sound_effects',
@@ -54,12 +57,18 @@ class User extends Authenticatable
             'level' => 'integer',
             'streak_days' => 'integer',
             'last_active_on' => 'date',
+            'last_login_at' => 'datetime',
             'sound_effects' => 'boolean',
             'email_notifications' => 'boolean',
             'whatsapp_notifications' => 'boolean',
             'dark_mode' => 'boolean',
             'orientation_completed_at' => 'datetime',
         ];
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(Group::class);
     }
 
     public function userQuests(): HasMany
@@ -101,9 +110,55 @@ class User extends Authenticatable
         return $this->hasMany(XpTransaction::class);
     }
 
+    public function submissions(): HasMany
+    {
+        return $this->hasMany(QuestSubmission::class);
+    }
+
+    /**
+     * Gugus-gugus yang dibimbing user ini bila ia seorang LO.
+     */
+    public function mentoredGroups(): HasMany
+    {
+        return $this->hasMany(Group::class, 'mentor_id');
+    }
+
     public function isMentor(): bool
     {
         return $this->role->canReviewTickets();
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === UserRole::Admin;
+    }
+
+    public function isLiaisonOfficer(): bool
+    {
+        return $this->role === UserRole::LiaisonOfficer;
+    }
+
+    /**
+     * Boleh meninjau bukti milik mahasiswa tertentu?
+     *
+     * LO hanya boleh meninjau anggota gugusnya sendiri; admin boleh semuanya.
+     * Tanpa batas ini seorang LO bisa meluluskan mahasiswa gugus lain.
+     */
+    public function canReviewSubmissionOf(User $student): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if (! $this->isLiaisonOfficer()) {
+            return false;
+        }
+
+        if ($this->group_id === null || $student->group_id === null) {
+            return false;
+        }
+
+        return $this->group_id === $student->group_id;
     }
 
     /**
@@ -117,9 +172,6 @@ class User extends Authenticatable
         return $levels[$this->level]['title'] ?? 'Maba Pemula';
     }
 
-    /**
-     * Ambang XP level berikutnya, null bila sudah level tertinggi.
-     */
     public function getNextLevelXpAttribute(): ?int
     {
         /** @var array<int, array{title: string, min_xp: int}> $levels */
@@ -128,9 +180,6 @@ class User extends Authenticatable
         return $levels[$this->level + 1]['min_xp'] ?? null;
     }
 
-    /**
-     * Progres menuju level berikutnya dalam peratus (0-100).
-     */
     public function getLevelProgressAttribute(): int
     {
         /** @var array<int, array{title: string, min_xp: int}> $levels */
@@ -156,8 +205,7 @@ class User extends Authenticatable
     }
 
     /**
-     * Kode verifikasi sertifikat: stabil per mahasiswa, ditandatangani APP_KEY
-     * sehingga tidak bisa ditebak dari ID saja.
+     * Kode verifikasi sertifikat: stabil per mahasiswa, ditandatangani APP_KEY.
      */
     public function getCertificateCodeAttribute(): string
     {

@@ -122,6 +122,29 @@
                             </a>
                         </div>
 
+                    @elseif ($quest->requiresVerification())
+                        {{-- Anti-curang: bukti wajib. Tombol biasa tidak tersedia. --}}
+                        <div class="flex flex-wrap items-center justify-between gap-2.5">
+                            <div class="min-w-0">
+                                <p class="flex items-center gap-1.5 font-display text-[0.82rem] font-bold leading-tight">
+                                    <x-icon name="shield" class="size-4 text-teal-deep" :stroke="2.2" />
+                                    Modul ini memerlukan bukti
+                                </p>
+                                <p class="mt-0.5 text-[0.7rem] font-medium leading-relaxed text-ink-soft">
+                                    {{ $quest->verification_method->description() }}
+                                </p>
+                                @if ($submission?->status === \App\Enums\SubmissionStatus::Pending)
+                                    <p class="mt-1.5 stamp bg-amber">Menunggu tinjauan LO</p>
+                                @elseif ($submission?->status === \App\Enums\SubmissionStatus::Rejected)
+                                    <p class="mt-1.5 stamp bg-vermilion text-white">Ditolak — unggah ulang</p>
+                                @endif
+                            </div>
+                            <button type="button" class="btn btn-accent" data-open-verify>
+                                <x-icon :name="$quest->verification_method->icon()" class="size-4" :stroke="2" />
+                                {{ $quest->verification_method->label() }}
+                            </button>
+                        </div>
+
                     @else
                         <form
                             method="POST"
@@ -217,4 +240,9 @@
         </aside>
     </div>
 </div>
+
+{{-- Modal verifikasi anti-curang, hanya untuk modul yang mewajibkan bukti --}}
+@if ($isOpen && $quest->requiresVerification())
+    <x-verify-modal :quest="$quest" :user-quest="$userQuest" :submission="$submission ?? null" />
+@endif
 @endsection

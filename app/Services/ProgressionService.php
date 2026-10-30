@@ -74,7 +74,10 @@ class ProgressionService
      */
     public function questBoard(User $user): Collection
     {
-        $quests = Quest::query()->ordered()->get();
+        $quests = Quest::query()->published()->ordered()->get()
+            ->filter(fn (Quest $quest): bool => $quest->targetsStudent($user))
+            ->values();
+
         $progress = $user->userQuests()->get()->keyBy('quest_id');
         $day = $this->effectiveDay();
 

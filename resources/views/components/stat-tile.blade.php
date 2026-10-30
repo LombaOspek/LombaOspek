@@ -17,7 +17,7 @@
             <p class="text-[0.6rem] font-extrabold uppercase tracking-[0.13em] opacity-70">{{ $label }}</p>
             <p class="numeric mt-1 text-[1.45rem] font-bold leading-none">{{ $value }}</p>
             @if ($caption)
-                <p class="mt-1 truncate text-[0.66rem] font-semibold opacity-75">{{ $caption }}</p>
+                <p class="mt-1 text-[0.66rem] font-semibold leading-snug opacity-75 [text-wrap:pretty]">{{ $caption }}</p>
             @endif
         </div>
         <span class="grid size-7 shrink-0 place-items-center rounded-sm border-[1.5px] border-current/40 bg-black/5">

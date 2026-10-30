@@ -110,6 +110,12 @@
                                     <x-status-pill :status="$status" :reason="$row['locked_reason']" />
                                     <span class="stamp bg-paper-dim text-[0.56rem]">{{ $quest->category }}</span>
                                     <span class="stamp bg-amber/40 text-[0.56rem]">+{{ $quest->xp_reward }} XP</span>
+                                    @if ($quest->requiresVerification())
+                                        <span class="stamp bg-teal text-white text-[0.56rem]" title="{{ $quest->verification_method->description() }}">
+                                            <x-icon name="shield" class="size-2.5" :stroke="2.6" />
+                                            {{ $quest->verification_method->label() }}
+                                        </span>
+                                    @endif
                                 </span>
 
                                 <span class="mt-1.5 block font-display text-[0.86rem] font-bold leading-snug">

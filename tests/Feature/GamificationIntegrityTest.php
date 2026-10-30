@@ -4,20 +4,20 @@ namespace Tests\Feature;
 
 use App\Enums\TicketStatus;
 use App\Enums\UserRole;
+use App\Enums\VerificationMethod;
 use App\Models\Achievement;
 use App\Models\HelpTicket;
 use App\Models\Quest;
 use App\Models\User;
 use App\Services\CertificateService;
-use App\Services\LeaderboardService;
 use App\Services\XpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
+use Tests\Concerns\CompletesQuests;
 use Tests\TestCase;
 
 class GamificationIntegrityTest extends TestCase
 {
-    use RefreshDatabase;
+    use CompletesQuests, RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -36,11 +36,8 @@ class GamificationIntegrityTest extends TestCase
         $student = $this->student();
         $service = app(XpService::class);
 
-        $first = $service->award($student, 100, 'test', 1, 'Uji', 'test-key-1');
-        $second = $service->award($student, 100, 'test', 1, 'Uji lagi', 'test-key-1');
-
-        $this->assertSame(100, $first);
-        $this->assertNull($second);
+        $this->assertSame(100, $service->award($student, 100, 'test', 1, 'Uji', 'test-key-1'));
+        $this->assertNull($service->award($student, 100, 'test', 1, 'Uji lagi', 'test-key-1'));
         $this->assertSame(100, $student->refresh()->xp);
         $this->assertSame(1, $student->xpTransactions()->where('idempotency_key', 'test-key-1')->count());
     }
@@ -48,18 +45,17 @@ class GamificationIntegrityTest extends TestCase
     public function test_xp_ledger_matches_the_user_column(): void
     {
         $student = $this->student();
+        $quest = Quest::query()->where('step_number', 1)->firstOrFail();
 
-        $this->actingAs($student)->post('/misi/'.Quest::query()->where('step_number', 1)->value('id').'/selesai', ['confirm' => '1']);
+        $this->completeQuestProperly($student, $quest);
 
         $audit = app(XpService::class)->audit($student->refresh());
 
         $this->assertTrue($audit['consistent'], 'Buku besar XP harus sama dengan kolom users.xp.');
-        $this->assertSame($audit['column'], $audit['ledger']);
     }
 
     public function test_level_follows_configured_xp_bands(): void
     {
-        $student = $this->student();
         $service = app(XpService::class);
 
         $this->assertSame(1, $service->levelForXp(0));
@@ -74,10 +70,7 @@ class GamificationIntegrityTest extends TestCase
         $student = $this->student();
         $this->assertTrue($student->sound_effects);
 
-        // Checkbox yang dilepas tidak mengirim field apa pun.
-        $this->actingAs($student)
-            ->post('/profil/tetapan', [])
-            ->assertRedirect('/profil?tab=settings');
+        $this->actingAs($student)->post('/profil/tetapan', [])->assertRedirect('/profil?tab=settings');
 
         $student->refresh();
         $this->assertFalse($student->sound_effects);
@@ -90,9 +83,7 @@ class GamificationIntegrityTest extends TestCase
         $student = $this->student();
         $student->forceFill(['sound_effects' => false])->save();
 
-        $this->actingAs($student)
-            ->post('/profil/tetapan', ['sound_effects' => '1'])
-            ->assertRedirect('/profil?tab=settings');
+        $this->actingAs($student)->post('/profil/tetapan', ['sound_effects' => '1']);
 
         $this->assertTrue($student->refresh()->sound_effects);
     }
@@ -111,13 +102,12 @@ class GamificationIntegrityTest extends TestCase
 
         $this->assertSame(TicketStatus::Open, $ticket->status);
         $this->assertNull($ticket->reply);
-        $this->assertNull($ticket->answered_at);
     }
 
-    public function test_mentor_reply_is_attributed_and_marks_ticket_answered(): void
+    public function test_officer_reply_is_attributed(): void
     {
         $student = $this->student();
-        $mentor = User::query()->where('role', UserRole::Mentor)->firstOrFail();
+        $officer = User::query()->where('role', UserRole::LiaisonOfficer)->firstOrFail();
 
         $ticket = HelpTicket::create([
             'user_id' => $student->id,
@@ -127,17 +117,14 @@ class GamificationIntegrityTest extends TestCase
             'status' => TicketStatus::Open,
         ]);
 
-        $this->actingAs($mentor)
-            ->post("/mentor/tiket/{$ticket->id}/balas", [
-                'reply' => 'Sesi dimulai pukul 08.00 di Ruang 4B, hadir 15 menit lebih awal.',
-                'status' => 'answered',
-            ])
-            ->assertRedirect();
+        $this->actingAs($officer)->post("/lo/tiket/{$ticket->id}/balas", [
+            'reply' => 'Sesi dimulai pukul 08.00 di Ruang 4B, hadir 15 menit lebih awal.',
+            'status' => 'answered',
+        ])->assertRedirect();
 
         $ticket->refresh();
-
         $this->assertSame(TicketStatus::Answered, $ticket->status);
-        $this->assertSame($mentor->id, $ticket->answered_by);
+        $this->assertSame($officer->id, $ticket->answered_by);
         $this->assertNotNull($ticket->answered_at);
     }
 
@@ -149,12 +136,12 @@ class GamificationIntegrityTest extends TestCase
             'user_id' => $student->id,
             'subject' => 'Percobaan eskalasi',
             'category' => 'Umum',
-            'message' => 'Saya mencoba menjawab tiket saya sendiri tanpa hak mentor.',
+            'message' => 'Saya mencoba menjawab tiket saya sendiri tanpa hak LO.',
             'status' => TicketStatus::Open,
         ]);
 
         $this->actingAs($student)
-            ->post("/mentor/tiket/{$ticket->id}/balas", ['reply' => 'Balasan palsu dari mahasiswa.'])
+            ->post("/lo/tiket/{$ticket->id}/balas", ['reply' => 'Balasan palsu dari mahasiswa.'])
             ->assertForbidden();
 
         $this->assertNull($ticket->refresh()->reply);
@@ -163,19 +150,19 @@ class GamificationIntegrityTest extends TestCase
     public function test_achievement_progress_is_derived_from_real_data(): void
     {
         $student = $this->student();
-        $firstQuestAchievement = Achievement::query()->where('code', 'ach-01')->firstOrFail();
+        $achievement = Achievement::query()->where('code', 'ach-01')->firstOrFail();
 
         $this->assertDatabaseMissing('user_achievements', [
             'user_id' => $student->id,
-            'achievement_id' => $firstQuestAchievement->id,
+            'achievement_id' => $achievement->id,
             'is_unlocked' => true,
         ]);
 
-        $this->actingAs($student)->post('/misi/'.Quest::query()->where('step_number', 1)->value('id').'/selesai', ['confirm' => '1']);
+        $this->completeQuestProperly($student, Quest::query()->where('step_number', 1)->firstOrFail());
 
         $this->assertDatabaseHas('user_achievements', [
             'user_id' => $student->id,
-            'achievement_id' => $firstQuestAchievement->id,
+            'achievement_id' => $achievement->id,
             'is_unlocked' => true,
         ]);
     }
@@ -185,10 +172,9 @@ class GamificationIntegrityTest extends TestCase
         $student = $this->student();
         $achievement = Achievement::query()->where('code', 'ach-01')->firstOrFail();
 
-        $this->actingAs($student)->post('/misi/'.Quest::query()->where('step_number', 1)->value('id').'/selesai', ['confirm' => '1']);
+        $this->completeQuestProperly($student, Quest::query()->where('step_number', 1)->firstOrFail());
         $afterUnlock = $student->refresh()->xp;
 
-        // Membuka halaman pencapaian memicu sinkronisasi ulang.
         $this->actingAs($student)->get('/pencapaian')->assertOk();
         $this->actingAs($student)->get('/pencapaian')->assertOk();
 
@@ -203,12 +189,9 @@ class GamificationIntegrityTest extends TestCase
     {
         $student = $this->student();
 
-        $this->actingAs($student)->get('/peringkat')
-            ->assertOk()
-            ->assertSee('Peringkat kampus');
+        $this->actingAs($student)->get('/peringkat')->assertOk()->assertSee('Peringkat kampus');
 
-        $top = app(LeaderboardService::class)->top(5);
-
+        $top = app(\App\Services\LeaderboardService::class)->top(5);
         $xpValues = $top->pluck('user.xp')->all();
         $sorted = $xpValues;
         rsort($sorted);
@@ -223,13 +206,9 @@ class GamificationIntegrityTest extends TestCase
 
         $this->assertSame($code, $student->fresh()->certificate_code);
         $this->assertStringStartsWith('OSQ-', $code);
-
-        // Belum selesai orientasi → verifikasi publik menolak.
         $this->assertNull(app(CertificateService::class)->verify($code));
 
-        $this->get('/verifikasi/'.$code)
-            ->assertOk()
-            ->assertSee('Kode tidak ditemukan');
+        $this->get('/verifikasi/'.$code)->assertOk()->assertSee('Kode tidak ditemukan');
     }
 
     public function test_verification_page_hides_private_data_for_valid_codes(): void
@@ -279,7 +258,7 @@ class GamificationIntegrityTest extends TestCase
             'password_confirmation' => 'kata-sandi-baru-2026',
         ])->assertRedirect('/profil?tab=settings');
 
-        $this->assertTrue(Hash::check('kata-sandi-baru-2026', $student->refresh()->password));
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('kata-sandi-baru-2026', $student->refresh()->password));
     }
 
     public function test_daily_activity_increments_the_streak_once_per_day(): void

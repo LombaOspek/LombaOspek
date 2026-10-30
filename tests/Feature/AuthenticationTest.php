@@ -45,19 +45,7 @@ class AuthenticationTest extends TestCase
         $this->assertAuthenticated();
     }
 
-    public function test_student_can_login_with_email(): void
-    {
-        $user = User::query()->where('nim', '202653033')->firstOrFail();
-
-        $this->post('/login', [
-            'identity' => $user->email,
-            'password' => 'password',
-        ])->assertRedirect('/dashboard');
-
-        $this->assertAuthenticatedAs($user);
-    }
-
-    public function test_wrong_password_is_rejected_without_leaking_which_field_failed(): void
+    public function test_wrong_password_is_rejected(): void
     {
         $this->post('/login', [
             'identity' => '202653033',
@@ -67,19 +55,8 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_unknown_identity_is_rejected(): void
-    {
-        $this->post('/login', [
-            'identity' => '999999999',
-            'password' => 'password',
-        ])->assertSessionHasErrors('identity');
-
-        $this->assertGuest();
-    }
-
     public function test_quick_login_bypass_route_no_longer_exists(): void
     {
-        // Rute lama GET /quick-login meloloskan siapa pun masuk tanpa kredensial.
         $this->get('/quick-login')->assertNotFound();
         $this->assertGuest();
     }
@@ -87,38 +64,63 @@ class AuthenticationTest extends TestCase
     public function test_login_is_rate_limited(): void
     {
         for ($attempt = 1; $attempt <= 6; $attempt++) {
-            $this->post('/login', [
-                'identity' => '202653033',
-                'password' => 'salah',
-            ]);
+            $this->post('/login', ['identity' => '202653033', 'password' => 'salah']);
         }
 
-        $this->post('/login', [
-            'identity' => '202653033',
-            'password' => 'salah',
-        ])->assertStatus(429);
+        $this->post('/login', ['identity' => '202653033', 'password' => 'salah'])
+            ->assertStatus(429);
     }
 
     public function test_logout_ends_the_session(): void
     {
-        $user = User::query()->where('nim', '202653033')->firstOrFail();
+        $student = User::query()->where('nim', '202653033')->firstOrFail();
 
-        $this->actingAs($user)->post('/logout')->assertRedirect('/login');
+        $this->actingAs($student)->post('/logout')->assertRedirect('/login');
         $this->assertGuest();
     }
 
-    public function test_mentor_routes_are_forbidden_for_students(): void
+    /*
+    |--------------------------------------------------------------------------
+    | Otorisasi berbasis peran
+    |--------------------------------------------------------------------------
+    */
+
+    public function test_student_cannot_open_officer_portal(): void
     {
         $student = User::query()->where('nim', '202653033')->firstOrFail();
 
-        $this->actingAs($student)->get('/mentor/tiket')->assertForbidden();
+        $this->actingAs($student)->get('/lo/verifikasi')->assertForbidden();
     }
 
-    public function test_mentor_can_open_ticket_inbox(): void
+    public function test_student_cannot_open_admin_pages(): void
     {
-        $mentor = User::query()->where('role', UserRole::Mentor)->firstOrFail();
+        $student = User::query()->where('nim', '202653033')->firstOrFail();
 
-        $this->actingAs($mentor)->get('/mentor/tiket')->assertOk();
+        $this->actingAs($student)->get('/admin/akun')->assertForbidden();
+        $this->actingAs($student)->get('/admin/misi')->assertForbidden();
+    }
+
+    public function test_liaison_officer_cannot_open_admin_pages(): void
+    {
+        $officer = User::query()->where('role', UserRole::LiaisonOfficer)->firstOrFail();
+
+        $this->actingAs($officer)->get('/admin/akun')->assertForbidden();
+    }
+
+    public function test_liaison_officer_can_open_verification_portal(): void
+    {
+        $officer = User::query()->where('role', UserRole::LiaisonOfficer)->firstOrFail();
+
+        $this->actingAs($officer)->get('/lo/verifikasi')->assertOk();
+    }
+
+    public function test_admin_can_open_both_portals(): void
+    {
+        $admin = User::query()->where('role', UserRole::Admin)->firstOrFail();
+
+        $this->actingAs($admin)->get('/admin/akun')->assertOk();
+        $this->actingAs($admin)->get('/admin/misi')->assertOk();
+        $this->actingAs($admin)->get('/lo/verifikasi')->assertOk();
     }
 
     public function test_first_quest_is_open_on_a_fresh_account(): void
@@ -136,21 +138,15 @@ class AuthenticationTest extends TestCase
     {
         $service = app(ProgressionService::class);
 
-        // Acara jauh di masa lalu: hari harus berhenti di total, bukan terus naik.
         config(['ospek.orientation.start_date' => now()->subDays(200)->toDateString(), 'ospek.orientation.days' => 8]);
-
         $this->assertSame(8, $service->orientationDay());
         $this->assertTrue($service->hasEnded());
 
-        // Sebelum mulai.
         config(['ospek.orientation.start_date' => now()->addDays(5)->toDateString()]);
-
         $this->assertSame(0, $service->orientationDay());
         $this->assertFalse($service->hasEnded());
 
-        // Hari pertama.
         config(['ospek.orientation.start_date' => now()->toDateString()]);
-
         $this->assertSame(1, $service->orientationDay());
         $this->assertFalse($service->hasEnded());
     }

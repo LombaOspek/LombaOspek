@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\EnsureUserIsMentor;
 use App\Http\Middleware\TrackDailyActivity;
 use Illuminate\Foundation\Application;
@@ -17,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'mentor' => EnsureUserIsMentor::class,
             'activity' => TrackDailyActivity::class,
+            'role' => EnsureRole::class,
         ]);
 
         $middleware->redirectGuestsTo(fn (): string => route('login'));

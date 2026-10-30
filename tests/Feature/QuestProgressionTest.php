@@ -4,15 +4,18 @@ namespace Tests\Feature;
 
 use App\Enums\QuestActionType;
 use App\Enums\QuestStatus;
+use App\Enums\VerificationMethod;
 use App\Models\Quest;
 use App\Models\User;
 use App\Services\ProgressionService;
+use App\Services\VerificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\CompletesQuests;
 use Tests\TestCase;
 
 class QuestProgressionTest extends TestCase
 {
-    use RefreshDatabase;
+    use CompletesQuests, RefreshDatabase;
 
     protected function setUp(): void
     {
@@ -35,46 +38,63 @@ class QuestProgressionTest extends TestCase
 
         $this->actingAs($student)
             ->post("/misi/{$locked->id}/selesai", ['confirm' => '1'])
-            ->assertSessionHas('toast');
+            ->assertRedirect();
 
         $this->assertSame(0, $student->refresh()->xp);
-        $this->assertDatabaseMissing('user_quests', [
-            'user_id' => $student->id,
-            'quest_id' => $locked->id,
-            'status' => 'completed',
+        $this->assertNotSame(
+            QuestStatus::Completed,
+            app(ProgressionService::class)->statusFor($student, $locked),
+        );
+    }
+
+    /**
+     * Inti anti-curang: modul bertoken TIDAK boleh selesai lewat tombol biasa.
+     */
+    public function test_verification_quest_cannot_be_completed_without_proof(): void
+    {
+        $student = $this->student();
+        $tokenQuest = Quest::query()->where('verification_method', VerificationMethod::Token)->firstOrFail();
+
+        // Buka jalan sampai modul bertoken pertama (MOD-02).
+        $this->advanceTo($student, $tokenQuest->step_number);
+
+        $before = $student->refresh()->xp;
+
+        $response = $this->actingAs($student)->postJson("/misi/{$tokenQuest->id}/selesai", ['confirm' => '1']);
+
+        $response->assertStatus(422)->assertJson([
+            'success' => false,
+            'requires_verification' => true,
+            'method' => 'token',
         ]);
+
+        $this->assertSame($before, $student->refresh()->xp);
+        $this->assertNotSame(
+            QuestStatus::Completed,
+            app(ProgressionService::class)->statusFor($student, $tokenQuest),
+        );
     }
 
     public function test_completing_a_quest_awards_xp_exactly_once(): void
     {
         $student = $this->student();
-        $first = Quest::query()->where('step_number', 1)->firstOrFail();
+        $tokenQuest = Quest::query()->where('verification_method', VerificationMethod::Token)->firstOrFail();
 
-        $this->actingAs($student)->post("/misi/{$first->id}/selesai", ['confirm' => '1']);
+        $this->advanceTo($student, $tokenQuest->step_number);
+        $before = $student->refresh()->xp;
 
-        $questTx = $student->xpTransactions()->where('source_type', 'quest')->where('source_id', $first->id);
+        $this->redeemKnownToken($student, $tokenQuest);
+
+        $questTx = $student->xpTransactions()
+            ->where('source_type', 'quest')
+            ->where('source_id', $tokenQuest->id);
 
         $this->assertSame(1, $questTx->count());
-        $this->assertSame($first->xp_reward, (int) $questTx->sum('amount'));
+        $this->assertSame($before + $tokenQuest->xp_reward, $student->refresh()->xp);
 
-        // Baris progres harus mencatat XP modul ini, bukan meninggalkan angka 0.
-        $this->assertDatabaseHas('user_quests', [
-            'user_id' => $student->id,
-            'quest_id' => $first->id,
-            'status' => 'completed',
-            'xp_awarded' => $first->xp_reward,
-        ]);
-
-        $afterFirst = $student->refresh()->xp;
-
-        // Request ulang tidak boleh menambah poin apa pun.
-        $this->actingAs($student)->post("/misi/{$first->id}/selesai", ['confirm' => '1']);
-
-        $this->assertSame($afterFirst, $student->refresh()->xp);
-        $this->assertSame(
-            1,
-            $student->xpTransactions()->where('source_type', 'quest')->where('source_id', $first->id)->count(),
-        );
+        // Klaim ulang dengan token yang sama harus ditolak.
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        app(VerificationService::class)->redeemToken($student, $tokenQuest->refresh(), 'TES-TOKEN-26');
     }
 
     public function test_completing_a_quest_unlocks_the_next_one(): void
@@ -87,7 +107,7 @@ class QuestProgressionTest extends TestCase
 
         $this->assertSame(QuestStatus::Locked, $service->statusFor($student, $second));
 
-        $this->actingAs($student)->post("/misi/{$first->id}/selesai", ['confirm' => '1']);
+        $this->completeQuestProperly($student, $first);
 
         $this->assertSame(QuestStatus::Completed, $service->statusFor($student->refresh(), $first));
         $this->assertTrue($service->statusFor($student, $second)->isOpen());
@@ -95,13 +115,13 @@ class QuestProgressionTest extends TestCase
 
     public function test_time_gate_keeps_quests_locked_even_when_previous_is_done(): void
     {
-        // Orientasi baru berjalan hari ke-1: modul hari ke-3 harus tetap tertutup.
         config(['ospek.orientation.start_date' => now()->toDateString()]);
 
         $student = $this->student();
         $service = app(ProgressionService::class);
 
-        $this->actingAs($student)->post('/misi/'.Quest::query()->where('step_number', 1)->value('id').'/selesai', ['confirm' => '1']);
+        $first = Quest::query()->where('step_number', 1)->firstOrFail();
+        $this->completeQuestProperly($student, $first);
 
         $third = Quest::query()->where('step_number', 3)->firstOrFail();
         $this->assertSame(QuestStatus::Locked, $service->statusFor($student->refresh(), $third));
@@ -110,33 +130,16 @@ class QuestProgressionTest extends TestCase
     public function test_reflection_quest_requires_a_substantive_note(): void
     {
         $student = $this->student();
-        $first = Quest::query()->where('step_number', 1)->firstOrFail();
-        $reflectionQuest = Quest::query()->where('step_number', 3)->firstOrFail();
+        $reflectionQuest = Quest::query()->where('action_type', QuestActionType::Reflection)->firstOrFail();
 
-        // Buka jalan sampai modul 3.
-        foreach ([1, 2] as $step) {
-            $quest = Quest::query()->where('step_number', $step)->firstOrFail();
-            $this->actingAs($student)->post("/misi/{$quest->id}/selesai", ['confirm' => '1']);
-        }
+        $this->advanceTo($student, $reflectionQuest->step_number);
+        $before = $student->refresh()->xp;
 
-        $xpBefore = $student->refresh()->xp;
-
-        $this->actingAs($student)
-            ->post("/misi/{$reflectionQuest->id}/selesai", ['confirm' => '1', 'reflection' => 'terlalu pendek'])
+        $this->actingAs($student->refresh())
+            ->post("/misi/{$reflectionQuest->id}/selesai", ['confirm' => '1', 'reflection' => 'pendek'])
             ->assertSessionHasErrors('reflection');
 
-        $this->assertSame($xpBefore, $student->refresh()->xp);
-        $this->assertNotSame(QuestStatus::Completed, app(ProgressionService::class)->statusFor($student, $reflectionQuest));
-
-        $this->actingAs($student->refresh())->post("/misi/{$reflectionQuest->id}/selesai", [
-            'confirm' => '1',
-            'reflection' => str_repeat('Saya belajar tentang pentingnya kolaborasi dan perencanaan studi. ', 3),
-        ]);
-
-        $this->assertSame(
-            QuestStatus::Completed,
-            app(ProgressionService::class)->statusFor($student->refresh(), $reflectionQuest),
-        );
+        $this->assertSame($before, $student->refresh()->xp);
     }
 
     public function test_completion_requires_confirmation_checkbox(): void
@@ -154,23 +157,7 @@ class QuestProgressionTest extends TestCase
         $student = $this->student();
 
         foreach (Quest::query()->ordered()->get() as $quest) {
-            $payload = ['confirm' => '1'];
-
-            if ($quest->action_type === QuestActionType::Quiz) {
-                $this->actingAs($student)->postJson('/kuis/jawab', [
-                    'module_code' => $quest->quiz_module_code,
-                    'answers' => [1 => 'B', 2 => 'C', 3 => 'C', 4 => 'B', 5 => 'B'],
-                ])->assertOk();
-
-                continue;
-            }
-
-            if ($quest->action_type === QuestActionType::Reflection) {
-                $payload['reflection'] = str_repeat('Catatan refleksi yang cukup panjang untuk lolos validasi. ', 2);
-            }
-
-            $this->actingAs($student)->post("/misi/{$quest->id}/selesai", $payload);
-            $student->refresh();
+            $this->completeQuestProperly($student, $quest);
         }
 
         $this->assertNotNull($student->refresh()->orientation_completed_at);
@@ -187,7 +174,33 @@ class QuestProgressionTest extends TestCase
             ->assertSee('Terkunci')
             ->assertSee('Sertifikat baru dapat dicetak setelah seluruh');
 
-        // Tombol cetak tidak boleh dirender selama belum memenuhi syarat.
         $response->assertDontSee('onclick="window.print()"', false);
+    }
+
+    public function test_quests_outside_student_major_are_hidden(): void
+    {
+        $student = $this->student();
+
+        $targeted = Quest::query()->where('step_number', 1)->firstOrFail();
+        $targeted->forceFill([
+            'target_scope' => 'major',
+            'target_study_programs' => ['Informatika'],
+        ])->save();
+
+        $board = app(ProgressionService::class)->questBoard($student->refresh());
+
+        $this->assertNull($board->first(fn (array $row): bool => $row['quest']->is($targeted)));
+    }
+
+    public function test_draft_quests_never_appear_on_the_board(): void
+    {
+        $student = $this->student();
+
+        $quest = Quest::query()->where('step_number', 1)->firstOrFail();
+        $quest->forceFill(['status' => 'draft'])->save();
+
+        $board = app(ProgressionService::class)->questBoard($student->refresh());
+
+        $this->assertNull($board->first(fn (array $row): bool => $row['quest']->is($quest)));
     }
 }

@@ -9,6 +9,7 @@ use App\Models\Quest;
 use App\Models\User;
 use App\Services\AchievementService;
 use App\Services\ProgressionService;
+use App\Services\VerificationService;
 use App\Services\XpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -63,6 +64,7 @@ class QuestController extends Controller
             'status' => $status,
             'lockedReason' => $row['locked_reason'] ?? null,
             'userQuest' => $row['user_quest'] ?? null,
+            'submission' => app(VerificationService::class)->submissionFor($user, $quest),
         ]);
     }
 
@@ -128,6 +130,31 @@ class QuestController extends Controller
             }
 
             return redirect()->route('quiz', ['module' => $quest->quiz_module_code]);
+        }
+
+        // Anti-curang: modul yang butuh bukti TIDAK boleh diselesaikan lewat
+        // tombol biasa. Tanpa penjagaan ini mahasiswa cukup memanggil endpoint
+        // `selesai` dan melewati modal verifikasi sepenuhnya.
+        if ($quest->requiresVerification()) {
+            $message = 'Modul ini memerlukan verifikasi '.$quest->verification_method->label().'. Buka pop-up verifikasi.';
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                    'requires_verification' => true,
+                    'method' => $quest->verification_method->value,
+                ], 422);
+            }
+
+            return redirect()
+                ->route('quests.show', $quest)
+                ->with('toast', [
+                    'title' => 'Perlu verifikasi',
+                    'message' => $message,
+                    'icon' => 'shield',
+                    'tone' => 'warning',
+                ]);
         }
 
         if ($quest->action_type === QuestActionType::Reflection && blank($request->validated('reflection'))) {

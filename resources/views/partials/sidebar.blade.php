@@ -97,9 +97,20 @@
         @endforeach
 
         @if ($navUser?->isMentor())
-            <a href="{{ route('mentor.tickets') }}" class="flex items-center gap-2.5 rounded-sm border-2 border-transparent px-2.5 py-[0.44rem] font-display text-[0.79rem] font-bold text-ink-soft transition hover:border-ink/20 hover:bg-paper">
-                <x-icon name="ticket" class="size-[1.05rem]" :stroke="1.8" />
-                Tiket Mentor
+            <a href="{{ route('lo.dashboard') }}" class="flex items-center gap-2.5 rounded-sm border-2 px-2.5 py-[0.44rem] font-display text-[0.79rem] font-bold transition {{ request()->routeIs('lo.*') ? 'border-ink bg-amber shadow-[var(--shadow-flat-sm)]' : 'border-transparent text-ink-soft hover:border-ink/20 hover:bg-paper' }}">
+                <x-icon name="shield" class="size-[1.05rem]" :stroke="1.8" />
+                Verifikasi Bukti
+            </a>
+        @endif
+
+        @if ($navUser?->isAdmin())
+            <a href="{{ route('admin.accounts') }}" class="flex items-center gap-2.5 rounded-sm border-2 px-2.5 py-[0.44rem] font-display text-[0.79rem] font-bold transition {{ request()->routeIs('admin.accounts*') ? 'border-ink bg-amber shadow-[var(--shadow-flat-sm)]' : 'border-transparent text-ink-soft hover:border-ink/20 hover:bg-paper' }}">
+                <x-icon name="users" class="size-[1.05rem]" :stroke="1.8" />
+                Akun &amp; Gugus
+            </a>
+            <a href="{{ route('admin.quests.index') }}" class="flex items-center gap-2.5 rounded-sm border-2 px-2.5 py-[0.44rem] font-display text-[0.79rem] font-bold transition {{ request()->routeIs('admin.quests*') ? 'border-ink bg-amber shadow-[var(--shadow-flat-sm)]' : 'border-transparent text-ink-soft hover:border-ink/20 hover:bg-paper' }}">
+                <x-icon name="layers" class="size-[1.05rem]" :stroke="1.8" />
+                Quest Builder
             </a>
         @endif
     </nav>

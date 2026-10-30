@@ -4,10 +4,10 @@ namespace Database\Seeders;
 
 use App\Enums\QuestStatus;
 use App\Enums\UserRole;
+use App\Models\Group;
 use App\Models\Quest;
 use App\Models\User;
 use App\Models\UserQuest;
-use App\Services\AchievementService;
 use App\Services\ProgressionService;
 use App\Services\XpService;
 use Illuminate\Database\Seeder;
@@ -16,12 +16,13 @@ use Illuminate\Support\Facades\Hash;
 class DatabaseSeeder extends Seeder
 {
     /**
-     * Seluruh data mengacu pada KAK & Guidebook INVOFEST 2026:
+     * Data mengacu pada KAK & Guidebook INVOFEST 2026:
      * Universitas Muria Kudus, Program Studi Sistem Informasi.
      */
     public function run(): void
     {
         $this->call([
+            GroupSeeder::class,
             QuestSeeder::class,
             QuizQuestionSeeder::class,
             AchievementSeeder::class,
@@ -34,6 +35,8 @@ class DatabaseSeeder extends Seeder
 
     private function seedDemoStudents(): void
     {
+        $garuda = Group::query()->where('code', 'G-04')->first();
+
         // Akun demo utama: NIM nyata dari KAK (202653033).
         $demo = User::updateOrCreate(
             ['nim' => '202653033'],
@@ -44,7 +47,8 @@ class DatabaseSeeder extends Seeder
                 'role' => UserRole::Student,
                 'faculty' => 'Fakultas Teknik',
                 'major' => 'Sistem Informasi',
-                'group_name' => 'Kelompok 04 — Garuda',
+                'group_id' => $garuda?->id,
+                'group_name' => $garuda?->name ?? 'Kelompok 04 — Garuda',
                 'mentor_name' => 'Kak Nissa · Ruang Bimbingan 4B',
                 'phone' => '0812-3456-7890',
                 'xp' => 0,
@@ -57,38 +61,22 @@ class DatabaseSeeder extends Seeder
             ],
         );
 
-        $mentor = User::updateOrCreate(
-            ['nim' => 'MENTOR-01'],
-            [
-                'name' => 'Kak Nissa',
-                'email' => 'nissa@mentor.umk.ac.id',
-                'password' => Hash::make('password'),
-                'role' => UserRole::Mentor,
-                'faculty' => 'Fakultas Teknik',
-                'major' => 'Sistem Informasi',
-                'group_name' => 'Kelompok 04 — Garuda',
-                'mentor_name' => null,
-                'phone' => '0838-2093-1296',
-                'xp' => 0,
-                'level' => 1,
-                'streak_days' => 0,
-            ],
-        );
-
         // Rekan satu kelompok untuk mengisi papan peringkat. XP-nya berasal dari
         // transaksi sah agar buku besar tetap konsisten.
         $peers = [
-            ['nim' => '202653044', 'name' => 'Muhammad Viza Fairuzzeka', 'group' => 'Kelompok 04 — Garuda', 'xp' => 1180],
-            ['nim' => '202653067', 'name' => 'Vicko Amelino Syahputra', 'group' => 'Kelompok 07 — Rajawali', 'xp' => 960],
-            ['nim' => '202653012', 'name' => 'Aisyah Nur Fadhilah', 'group' => 'Kelompok 02 — Elang', 'xp' => 1420],
-            ['nim' => '202653078', 'name' => 'Bagas Dwi Prasetyo', 'group' => 'Kelompok 05 — Banteng', 'xp' => 1240],
-            ['nim' => '202653101', 'name' => 'Citra Ayu Lestari', 'group' => 'Kelompok 01 — Merpati', 'xp' => 880],
-            ['nim' => '202653055', 'name' => 'Dimas Arya Saputra', 'group' => 'Kelompok 03 — Kancil', 'xp' => 640],
+            ['nim' => '202653044', 'name' => 'Muhammad Viza Fairuzzeka', 'group' => 'G-04', 'major' => 'Sistem Informasi', 'xp' => 1180],
+            ['nim' => '202653067', 'name' => 'Vicko Amelino Syahputra', 'group' => 'G-02', 'major' => 'Sistem Informasi', 'xp' => 960],
+            ['nim' => '202653012', 'name' => 'Aisyah Nur Fadhilah', 'group' => 'G-02', 'major' => 'Sistem Informasi', 'xp' => 1420],
+            ['nim' => '202653078', 'name' => 'Bagas Dwi Prasetyo', 'group' => 'G-04', 'major' => 'Informatika', 'xp' => 1240],
+            ['nim' => '202653101', 'name' => 'Citra Ayu Lestari', 'group' => 'G-01', 'major' => 'Sistem Informasi', 'xp' => 880],
+            ['nim' => '202653055', 'name' => 'Dimas Arya Saputra', 'group' => 'G-03', 'major' => 'Informatika', 'xp' => 640],
         ];
 
         $xpService = app(XpService::class);
 
         foreach ($peers as $peer) {
+            $group = Group::query()->where('code', $peer['group'])->first();
+
             $user = User::updateOrCreate(
                 ['nim' => $peer['nim']],
                 [
@@ -97,9 +85,10 @@ class DatabaseSeeder extends Seeder
                     'password' => Hash::make('password'),
                     'role' => UserRole::Student,
                     'faculty' => 'Fakultas Teknik',
-                    'major' => 'Sistem Informasi',
-                    'group_name' => $peer['group'],
-                    'mentor_name' => 'Kak Nissa · Ruang Bimbingan 4B',
+                    'major' => $peer['major'],
+                    'group_id' => $group?->id,
+                    'group_name' => $group?->name,
+                    'mentor_name' => $group?->mentor_name,
                     'xp' => 0,
                     'level' => 1,
                     'streak_days' => 0,
@@ -118,9 +107,7 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        // Mahasiswa baru sungguhan: modul pertama sudah terbuka, bukan selesai.
-        $this->initialiseProgress($demo);
-        $this->initialiseProgress($mentor);
+        unset($demo);
     }
 
     /**
@@ -130,22 +117,18 @@ class DatabaseSeeder extends Seeder
     private function backfillProgress(): void
     {
         $progression = app(ProgressionService::class);
-        $achievements = app(AchievementService::class);
 
         User::query()->where('role', UserRole::Student)->each(function (User $user) use ($progression): void {
-            $progression->questBoard($user);
-
-            foreach (Quest::query()->ordered()->get() as $quest) {
-                $status = $progression->statusFor($user, $quest);
-
-                $existing = UserQuest::query()
-                    ->where('user_id', $user->getKey())
-                    ->where('quest_id', $quest->getKey())
-                    ->first();
-
-                if ($existing !== null) {
+            foreach (Quest::query()->published()->ordered()->get() as $quest) {
+                if (! $quest->targetsStudent($user)) {
                     continue;
                 }
+
+                if (UserQuest::query()->where('user_id', $user->getKey())->where('quest_id', $quest->getKey())->exists()) {
+                    continue;
+                }
+
+                $status = $progression->statusFor($user, $quest);
 
                 UserQuest::create([
                     'user_id' => $user->getKey(),
@@ -154,11 +137,5 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
         });
-    }
-
-    private function initialiseProgress(User $user): void
-    {
-        // Tidak ada baris progres awal: ProgressionService yang menentukan
-        // modul mana yang terbuka berdasarkan urutan dan hari orientasi.
     }
 }
