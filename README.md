@@ -1,58 +1,247 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 🏆 OspekQuest — Portal Gamifikasi Orientasi Mahasiswa Baru
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Portal web interaktif bergaya **Neo-Brutalist** untuk mengelola orientasi mahasiswa baru (OSPEK/PKKMB). Dibangun dengan Laravel 12, Tailwind CSS v4, dan Vite.
 
-## About Laravel
+> **Konteks Lomba:** Proyek ini dikembangkan untuk **INVOFEST 2026** — Universitas Muria Kudus, Program Studi Sistem Informasi.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 📋 Persyaratan Sistem
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| Komponen         | Versi Minimum  | Catatan                                            |
+|------------------|----------------|----------------------------------------------------|
+| **PHP**          | 8.3+           | Pastikan extension `pdo_sqlite`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `fileinfo`, `bcmath` aktif |
+| **Composer**     | 2.x            | [getcomposer.org](https://getcomposer.org/)        |
+| **Node.js**      | 18+            | Disarankan LTS (v20/v22)                           |
+| **npm**          | 9+             | Sudah bawaan Node.js                               |
+| **Git**          | 2.x            | Untuk clone repository                             |
+| **Database**     | SQLite (default) | MySQL/MariaDB juga didukung, lihat bagian konfigurasi |
 
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### Cek Cepat di Terminal
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+php -v          # → PHP 8.3.x atau lebih tinggi
+composer -V     # → Composer version 2.x.x
+node -v         # → v18.x.x atau lebih tinggi
+npm -v          # → 9.x.x atau lebih tinggi
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+---
 
-## Contributing
+## 🚀 Cara Menjalankan (Setup dari Nol)
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 1. Clone Repository
 
-## Code of Conduct
+```bash
+git clone https://github.com/LombaOspek/LombaOspek.git
+cd LombaOspek
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 2. Jalankan Setup Otomatis
 
-## Security Vulnerabilities
+Proyek ini sudah menyediakan Composer script `setup` yang mengerjakan semuanya:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+composer run setup
+```
 
-## License
+Script tersebut melakukan langkah-langkah berikut secara otomatis:
+1. `composer install` — menginstal dependensi PHP
+2. Menyalin `.env.example` → `.env` (jika belum ada)
+3. `php artisan key:generate` — membuat APP_KEY (⚠️ **wajib, tanpa ini aplikasi error**)
+4. `php artisan migrate --force` — membuat tabel database
+5. `npm install` — menginstal dependensi JavaScript
+6. `npm run build` — mem-build aset frontend (CSS/JS)
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 3. Isi Database dengan Data Demo
+
+```bash
+php artisan db:seed
+```
+
+### 4. Jalankan Server Lokal
+
+```bash
+php artisan serve
+```
+
+Buka browser ke **[http://127.0.0.1:8000](http://127.0.0.1:8000)**
+
+---
+
+## 🔑 Akun Demo
+
+Setelah menjalankan `php artisan db:seed`, akun-akun berikut tersedia:
+
+| NIM            | Email                            | Password   | Role    |
+|----------------|----------------------------------|------------|---------|
+| `202653033`    | `202653033@students.umk.ac.id`   | `password` | Student |
+| `MENTOR-01`    | `nissa@mentor.umk.ac.id`         | `password` | Mentor  |
+
+**Cara login paling cepat:** Klik tombol kuning **"⚡ Log Masuk Pantas"** di halaman `/login`.
+
+---
+
+## 🗂️ Halaman & Fitur
+
+| Route           | Halaman                       | Deskripsi                                      |
+|-----------------|-------------------------------|-------------------------------------------------|
+| `/login`        | Halaman Login                 | Login via NIM/Email + password, atau Quick Login |
+| `/`             | Dashboard                     | Ringkasan XP, level, streak, misi aktif, leaderboard |
+| `/misi`         | Peta Misi Orientasi           | Quest map interaktif dengan modal detail misi   |
+| `/kuiz`         | Kuis Kampus                   | Kuis interaktif dengan timer, skor, dan XP      |
+| `/pencapaian`   | Pencapaian & Lencana          | Koleksi badge/lencana dan progress pencapaian    |
+| `/sijil`        | Sertifikat                    | Sertifikat orientasi yang bisa dicetak/diunduh   |
+| `/profil`       | Profil & Pengaturan           | Edit profil, toggle settings, FAQ, tiket bantuan |
+
+---
+
+## ⚙️ Konfigurasi Database
+
+### SQLite (Default — Tanpa Install Apapun)
+
+File `.env.example` sudah dikonfigurasi untuk SQLite. Tidak perlu install server database.
+
+```env
+DB_CONNECTION=sqlite
+```
+
+File `database/database.sqlite` akan dibuat otomatis saat migration.
+
+### MySQL / MariaDB (Opsional)
+
+Jika ingin pakai MySQL, edit `.env`:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=ospekquest
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+Pastikan database `ospekquest` sudah dibuat di MySQL sebelum menjalankan migration.
+
+---
+
+## 🧪 Menjalankan Test
+
+```bash
+php artisan test --compact
+```
+
+---
+
+## 🛠️ Setup Manual (Kalau `composer run setup` Gagal)
+
+Jika script otomatis bermasalah, jalankan langkah-langkah ini satu per satu:
+
+```bash
+# 1. Install dependensi PHP
+composer install
+
+# 2. Salin file environment
+cp .env.example .env          # Linux/Mac
+copy .env.example .env        # Windows CMD
+Copy-Item .env.example .env   # Windows PowerShell
+
+# 3. Generate APP_KEY (WAJIB!)
+php artisan key:generate
+
+# 4. Buat file database SQLite (skip jika pakai MySQL)
+# Linux/Mac:
+touch database/database.sqlite
+# Windows PowerShell:
+New-Item database/database.sqlite -ItemType File -Force
+
+# 5. Jalankan migration
+php artisan migrate
+
+# 6. Isi data demo
+php artisan db:seed
+
+# 7. Install dependensi JavaScript
+npm install
+
+# 8. Build aset frontend
+npm run build
+
+# 9. Jalankan server
+php artisan serve
+```
+
+---
+
+## ❗ Troubleshooting
+
+### Error: `MissingAppKeyException` / `No application encryption key has been specified`
+
+**Penyebab:** File `.env` belum ada atau `APP_KEY` kosong.
+
+```bash
+cp .env.example .env        # Salin template environment
+php artisan key:generate    # Generate encryption key
+```
+
+### Error: `SQLSTATE[HY000]: General error: 1 no such table`
+
+**Penyebab:** Migration belum dijalankan.
+
+```bash
+php artisan migrate
+php artisan db:seed
+```
+
+### Error: `Vite manifest not found` / Halaman polos tanpa CSS
+
+**Penyebab:** Aset frontend belum di-build.
+
+```bash
+npm install
+npm run build
+```
+
+Atau untuk development dengan hot-reload:
+
+```bash
+npm run dev
+```
+
+### Error: `Headers already sent` / `Cannot modify header information`
+
+**Penyebab:** Ada karakter (spasi/BOM) sebelum tag `<?php` di salah satu file PHP, atau ada output sebelum response dikirim. Pastikan tidak ada `echo`/`print` di file config.
+
+---
+
+## 📁 Struktur Proyek
+
+```
+LombaOspek/
+├── app/
+│   ├── Enums/              # Enum: QuestStatus, UserRole, dsb.
+│   ├── Http/Controllers/   # AuthController, DashboardController, dll.
+│   ├── Models/             # User, Quest, QuizQuestion, Achievement, dll.
+│   ├── Services/           # XpService, ProgressionService, AchievementService
+│   └── View/Components/    # Blade component classes
+├── database/
+│   ├── migrations/         # Skema tabel
+│   └── seeders/            # Data demo orientasi
+├── resources/
+│   └── views/
+│       ├── layouts/        # Template utama (app.blade.php)
+│       ├── components/     # Reusable Blade components
+│       ├── auth/           # Halaman login
+│       └── pages/          # Dashboard, misi, kuis, pencapaian, dll.
+├── routes/
+│   └── web.php             # Semua route aplikasi
+├── public/                 # Entry point & aset hasil build
+├── tests/                  # PHPUnit test suite
+└── README.md               # ← Anda di sini
+```
+
+---
+
+## 📜 Lisensi
+
+Proyek ini dibuat untuk keperluan lomba **INVOFEST 2026**. Lisensi MIT.

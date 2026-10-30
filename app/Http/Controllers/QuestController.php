@@ -143,9 +143,9 @@ class QuestController extends Controller
                 ->withInput();
         }
 
-        $this->progression->complete($user, $quest, $request->validated('reflection'));
-
         $awarded = $this->progression->checkpointXp($quest);
+
+        $this->progression->complete($user, $quest, $request->validated('reflection'), $awarded);
 
         if ($awarded > 0) {
             $this->xp->award(

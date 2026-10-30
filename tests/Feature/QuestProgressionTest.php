@@ -57,6 +57,14 @@ class QuestProgressionTest extends TestCase
         $this->assertSame(1, $questTx->count());
         $this->assertSame($first->xp_reward, (int) $questTx->sum('amount'));
 
+        // Baris progres harus mencatat XP modul ini, bukan meninggalkan angka 0.
+        $this->assertDatabaseHas('user_quests', [
+            'user_id' => $student->id,
+            'quest_id' => $first->id,
+            'status' => 'completed',
+            'xp_awarded' => $first->xp_reward,
+        ]);
+
         $afterFirst = $student->refresh()->xp;
 
         // Request ulang tidak boleh menambah poin apa pun.

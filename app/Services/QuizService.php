@@ -177,7 +177,7 @@ class QuizService
             $quest = $user->quests()->where('quiz_module_code', $moduleCode)->first();
 
             if ($quest !== null && $this->progression->statusFor($user, $quest) !== QuestStatus::Completed) {
-                $this->progression->complete($user, $quest, "Kuis otomatis lulus: {$correct}/{$total}");
+                $this->progression->complete($user, $quest, "Kuis otomatis lulus: {$correct}/{$total}", $earnedXp);
                 $attempt->setAttribute('xp_earned', $earnedXp);
             }
         }

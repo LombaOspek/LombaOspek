@@ -25,3 +25,14 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# AI agent configs (developer-local)
+/.agents
+/.claude
+/.ai
+/.mcp.json
+/AGENTS.md
+/CLAUDE.md
+/opencode.json
+/boost.json
+/tools

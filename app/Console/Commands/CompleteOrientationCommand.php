@@ -79,8 +79,8 @@ class CompleteOrientationCommand extends Command
                 continue;
             }
 
-            $progression->complete($user, $quest, $reflection);
             $awarded = $progression->checkpointXp($quest);
+            $progression->complete($user, $quest, $reflection, $awarded);
 
             if ($awarded > 0) {
                 $xp->award($user, $awarded, 'quest', $quest->getKey(), "Modul selesai: {$quest->title}", "quest:{$user->getKey()}:{$quest->getKey()}");

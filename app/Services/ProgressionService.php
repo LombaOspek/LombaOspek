@@ -144,16 +144,19 @@ class ProgressionService
      *
      * XP tidak diberikan di sini — pemanggil yang menentukan nilainya karena
      * modul kuis mendapat XP dari skor, bukan dari kolom quests.xp_reward.
+     * `$xpAwarded` hanya dicatat sebagai jejak pada baris progres sehingga
+     * riwayat "modul ini dulu memberi berapa" tidak hilang.
      */
-    public function complete(User $user, Quest $quest, ?string $note = null): UserQuest
+    public function complete(User $user, Quest $quest, ?string $note = null, int $xpAwarded = 0): UserQuest
     {
-        return DB::transaction(function () use ($user, $quest, $note): UserQuest {
+        return DB::transaction(function () use ($user, $quest, $note, $xpAwarded): UserQuest {
             $userQuest = UserQuest::updateOrCreate(
                 ['user_id' => $user->getKey(), 'quest_id' => $quest->getKey()],
                 [
                     'status' => QuestStatus::Completed,
                     'completed_at' => now(),
                     'note' => $note,
+                    'xp_awarded' => $xpAwarded,
                 ],
             );
 
