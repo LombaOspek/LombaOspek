@@ -42,6 +42,8 @@ class Quest extends Model
         'radius_meters',
         'quiz_module_code',
         'is_default_completed',
+        'is_side_quest',
+        'required_completed_modules',
     ];
 
     protected function casts(): array
@@ -59,6 +61,8 @@ class Quest extends Model
             'longitude' => 'float',
             'target_study_programs' => 'array',
             'is_default_completed' => 'boolean',
+            'is_side_quest' => 'boolean',
+            'required_completed_modules' => 'integer',
             'action_type' => QuestActionType::class,
             'verification_method' => VerificationMethod::class,
         ];
@@ -72,6 +76,20 @@ class Quest extends Model
     public function scopePublished(Builder $query): Builder
     {
         return $query->where('status', 'published');
+    }
+
+    /**
+     * Jalur utama saja. Peta misi, gerbang babak, dan rantai prasyarat hanya
+     * boleh memakai query ini — Side Quest tidak memblokir apa pun.
+     */
+    public function scopeMainline(Builder $query): Builder
+    {
+        return $query->where('is_side_quest', false);
+    }
+
+    public function scopeSideQuests(Builder $query): Builder
+    {
+        return $query->where('is_side_quest', true);
     }
 
     public function userQuests(): HasMany

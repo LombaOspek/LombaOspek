@@ -106,7 +106,11 @@ trait CompletesQuests
     {
         $progression = app(ProgressionService::class);
 
-        foreach (Quest::query()->ordered()->get() as $quest) {
+        // mainline() wajib: Side Quest punya gerbangnya sendiri (jumlah modul
+        // utama) dan sengaja tidak bisa diselesaikan lewat jalur modul biasa.
+        // Tanpa filter ini, helper ini mencoba menyelesaikan Side Quest yang
+        // masih terkunci dan gagal dengan "Modul ini belum terbuka".
+        foreach (Quest::query()->mainline()->ordered()->get() as $quest) {
             if ($quest->step_number >= $upToStep) {
                 break;
             }

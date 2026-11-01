@@ -24,7 +24,8 @@ class CertificateService
 
     public function totalQuests(): int
     {
-        return (int) Quest::query()->count();
+        // Sertifikat bergantung pada 13 modul utama, bukan misi sosial opsional.
+        return (int) Quest::query()->mainline()->count();
     }
 
     /**
