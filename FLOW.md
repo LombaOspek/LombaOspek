@@ -46,7 +46,7 @@ untuk batas per-gugus.
 flowchart TD
     A["/login — NIM + kata sandi"] --> B["AuthController::login<br/>Hash::check + session regenerate"]
     B --> C["/dashboard — DashboardController::index"]
-    C --> D["ProgressionService::questBoard()<br/>hitung status 8 modul"]
+    C --> D["ProgressionService::questBoard()<br/>hitung status 13 modul utama"]
 
     D --> E{"Modul berikutnya?"}
     E -->|"available / in_progress"| F["/misi/{quest} — detail modul"]
@@ -112,22 +112,40 @@ jumlah hari penuh — artinya **saat demo sebelum acara, semua modul terbuka** a
 diperlihatkan ke juri. Setelah acara lewat, hari di-*clamp* supaya tidak muncul
 "Hari ke-74 dari 8".
 
-### 1.3 Delapan modul dan cara menyelesaikannya
+### 1.3 Tiga belas modul dalam tiga babak
 
-Data aktual dari database (`quests` setelah seeder):
+Katalog berisi **13 modul utama** (bukan 8) yang dikelompokkan menjadi **3 babak
+tematik** dari `config('ospek.chapters')`. Delapan modul tidak cukup untuk
+menghasilkan 3–5 node per babak seperti yang diminta desain peta.
 
-| Kode | Judul | Hari | XP | Aksi | Verifikasi | Cara menyelesaikan |
-|---|---|:--:|:--:|---|---|---|
-| MOD-01 | Registrasi Ulang & Verifikasi Berkas | 1 | 100 | `photo_proof` | **photo** | Unggah bukti → tunggu LO setujui |
-| MOD-02 | Jelajah Perpustakaan & Repositori Digital | 2 | 120 | `checkin` | **token** | Masukkan kode dari stan perpustakaan |
-| MOD-03 | Pertemuan Kelompok & Mentor Pendamping | 3 | 150 | `reflection` | none | Tulis refleksi ≥ 80 karakter + centang konfirmasi |
-| MOD-04 | Kuis Sistem Kredit Semester & Etika Akademik | 4 | 250 | `quiz` | none | Kerjakan kuis, minimal skor 80% |
-| MOD-05 | Apel Orientasi Akbar di Auditorium UMK | 5 | 350 | `geolocation` | **gps** | Berada dalam radius 150 m dari auditorium |
-| MOD-06 | Eksplorasi Stan Muria Computing Club (MCC) | 6 | 250 | `token` | **token** | Masukkan kode dari stan MCC |
-| MOD-07 | Proyek Mini: Solusi Digital untuk Kampus | 7 | 280 | `reflection` | none | Tulis refleksi ≥ 80 karakter |
-| MOD-08 | Upacara Penutupan & Sertifikat Orientasi | 8 | 300 | `geolocation` | **gps** | Verifikasi lokasi di titik upacara |
+Data aktual dari database (`quests` setelah seeder, `is_side_quest = 0`):
 
-Total XP dari modul: **1.800 XP**. Ditambah XP lencana, reasoning skor kuis, dan bonus.
+| Kode | Judul | Hari | XP | Aksi | Verifikasi |
+|---|---|:--:|:--:|---|---|
+| **BAB 1 — Pengenalan Kampus (Hari 1–2)** |||||
+| MOD-01 | Registrasi Ulang & Verifikasi Berkas | 1 | 100 | `photo_proof` | **photo** |
+| MOD-02 | Jelajah Perpustakaan & Repositori Digital | 2 | 120 | `token` | **token** |
+| MOD-03 | Tur Keliling Kampus & Titik Layanan | 1 | 110 | `reflection` | none |
+| MOD-04 | Kuis Sistem Kredit Semester & Etika Akademik | 2 | 250 | `quiz` | none |
+| **BAB 2 — Eksplorasi Fakultas (Hari 3–5)** |||||
+| MOD-05 | Pertemuan Kelompok & Mentor Pendamping | 3 | 150 | `checkin` | none |
+| MOD-06 | Kunjungan Laboratorium Fakultas Teknik | 3 | 180 | `token` | **token** |
+| MOD-07 | Kenalan dengan Dosen Wali & Program Studi | 4 | 160 | `checkin` | none |
+| MOD-08 | Apel Orientasi Akbar di Auditorium UMK | 4 | 350 | `geolocation` | **gps** |
+| MOD-09 | Eksplorasi Stan Muria Computing Club (MCC) | 5 | 250 | `token` | **token** |
+| **BAB 3 — Aksi & Penutupan (Hari 6–8)** |||||
+| MOD-10 | Workshop Etika Digital & Jejak Online | 6 | 200 | `checkin` | none |
+| MOD-11 | Proyek Mini: Solusi Digital untuk Kampus | 6 | 280 | `reflection` | none |
+| MOD-12 | Presentasi Kelompok & Umpan Balik Mentor | 7 | 240 | `checkin` | none |
+| MOD-13 | Upacara Penutupan & Sertifikat Orientasi | 8 | 300 | `geolocation` | **gps** |
+
+Total XP modul utama: **2.690 XP**. Ditambah **550 XP** dari 5 Side Quest, XP
+lencana (7 lencana), dan skor kuis.
+
+> **Invariant yang dipatok tes** — jangan diubah tanpa memperbarui tesnya:
+> step 3 = `Reflection`, step 4 = kuis `MOD-04` (dirujuk 15 kali di `QuizTest`),
+> step 8 = GPS (`AntiCheatVerificationTest` memakainya sebagai modul jauh yang
+> masih terkunci).
 
 ### 1.4 Empat jalur penyelesaian — detail teknis
 
@@ -488,7 +506,96 @@ Admin boleh membuka `/lo/verifikasi` dan meninjau bukti **semua** gugus, karena
 
 ---
 
-## 4. Titik Temu Antar Peran
+## 4. Bursa Hadiah — koin terpisah dari XP
+
+Bursa Hadiah memisahkan dua mata uang yang sering keliru disatukan:
+
+| | XP | Koin |
+|---|---|---|
+| Fungsi | reputasi & progres | alat belanja |
+| Arah | **hanya bertambah** | bisa naik dan turun |
+| Menentukan | level, gelar, papan peringkat | hadiah di Bursa |
+| Ledger | `xp_transactions` | `coin_transactions` |
+
+> Kalau XP dipakai langsung sebagai alat tukar, mahasiswa bisa menukar lencananya
+> sendiri lalu **turun level** — dan papan peringkat kehilangan makna.
+
+**Alur penukaran** (`RewardService::redeemReward()`):
+
+```mermaid
+flowchart TD
+    A["/bursa — RewardController::index"] --> B["Pilih hadiah → modal konfirmasi"]
+    B --> C["POST /bursa/{reward}/tukar<br/>throttle:10,1"]
+    C --> D["DB::transaction (3x retry deadlock)"]
+
+    D --> E["lockForUpdate() → rewards<br/>SELALU hadiah dulu"]
+    E --> F["lockForUpdate() → users"]
+    F --> G{"kuota → stok → saldo<br/>(validasi SETELAH kunci)"}
+
+    G -->|gagal| H["RewardRedemptionException<br/>402 koin / 409 stok-kuota"]
+    G -->|lolos| I["stok-- · koin -= harga<br/>RewardRedemption + claim_code"]
+    I --> J["coin_transactions<br/>amount negatif + balance_after"]
+    J --> K["202 / redirect + toast<br/>kode OQ-XXXX-XXXX"]
+
+    H --> L["UI memulihkan saldo dari server"]
+```
+
+**Kenapa urutannya begini** — empat keputusan yang tidak boleh ditukar:
+
+1. **Kunci selalu reward lalu user.** Urutan konsisten mencegah dua transaksi
+   saling menunggu secara melingkar (deadlock).
+2. **Validasi setelah kunci didapat.** Memeriksa stok sebelum mengunci *adalah*
+   race condition-nya — dua proses bisa sama-sama melihat sisa 1.
+3. **`stock = NULL` berarti tak terbatas dan tidak pernah didekrementasi.**
+   `NULL - 1` menghasilkan `NULL`, yang menghapus maknanya diam-diam.
+4. **`stock` global dipisah dari `quota_per_user`.** Tanpa itu satu mahasiswa
+   bisa menyapu seluruh stok.
+
+**Bukti penguncian.** 40 proses PHP paralel di MySQL berebut hadiah berstok 5:
+tepat **5 berhasil, 35 ditolak `out_of_stock`**, stok akhir 0 (bukan negatif),
+koin terpakai pas 500. Kontrol pembanding **tanpa** `lockForUpdate()` menghasilkan
+**7 klaim dari stok 5** — membuktikan penguncian yang mencegahnya, bukan kebetulan.
+
+**Penyerahan di meja panitia:**
+
+```bash
+php artisan reward:fulfill OQ-QRRF-Z6UT                             # tandai sudah diambil
+php artisan reward:fulfill OQ-QRRF-Z6UT --cancel --reason="..."     # batalkan + refund
+```
+
+Klaim berstatus `fulfilled` **tidak bisa** dibatalkan. Tanpa aturan ini, mahasiswa
+bisa di-refund untuk barang yang sudah dibawa pulang.
+
+---
+
+## 5. Side Quest — misi sosial opsional
+
+Diminta eksplisit oleh proposal (Manfaat & Tujuan poin 3: *"berinteraksi secara
+sosial melalui fitur Side Quest"*). Berbeda dari modul utama dalam tiga hal,
+dan ketiganya disengaja:
+
+1. **Tidak masuk rantai prasyarat** — melewatkannya tidak mengunci apa pun.
+2. **Tidak dihitung gerbang babak** — peta tetap 13 node / 3 babak.
+3. **Gerbangnya progres modul utama**, bukan hari.
+
+| Kode | Judul | Terbuka setelah |
+|---|---|:--:|
+| SQ-01 | Sapa Lima Teman Baru | 0 modul |
+| SQ-02 | Foto Bareng Gugus | 2 modul |
+| SQ-03 | Bantu Satu Mahasiswa Baru | 4 modul |
+| SQ-04 | Tantang Dosen Satu Pertanyaan | 6 modul |
+| SQ-05 | Rekam Pesan untuk Diri Sendiri | 8 modul |
+
+> **Jebakan yang sudah dibayar:** menambahkan entitas opsional ke sistem yang
+> *menghitung* hal membongkar enam query. Yang paling parah,
+> `syncCompletionFlag()` memakai `Quest::count()` termasuk Side Quest sehingga
+> **sertifikat tidak akan pernah terbit**. Semua query kini memakai scope
+> `mainline()`. Kalau menambah entitas opsional lagi, sisir setiap
+> `Quest::query()->count()`.
+
+---
+
+## 6. Titik Temu Antar Peran
 
 | Kejadian | Mahasiswa | LO | Admin |
 |---|---|---|---|
@@ -502,7 +609,41 @@ Admin boleh membuka `/lo/verifikasi` dan meninjau bukti **semua** gugus, karena
 
 ---
 
-## 5. Yang Menjaga Semua Ini Tetap Jujur
+## 7. Lima hook engagement di dasbor
+
+Dimasukkan agar dasbor tidak menjadi daftar 13 misi yang memicu *cognitive
+overload*. Tiga widget pertama menyusun **Fokus Harian**; dua sisanya menambah
+lapisan kompetisi.
+
+| Fitur | Dipicu oleh | Sumber data | Bisa di-farm? |
+|---|---|---|---|
+| **Fokus Hari Ini** | buka `/dashboard` | `ProgressionService::todayFocus()` | — |
+| **Misi Selanjutnya** | buka `/dashboard` | `nextUp($user, 3)` | — |
+| **Tantangan Harian** | buka `/dashboard` | `user_quests` + `xp_transactions` hari ini | — |
+| **Gugus Wars** | buka `/dashboard` | `groupStandings()` | Tidak: rasio dari server |
+| **Kotak Misteri** | auto-buka 900 ms setelah muat | `engagement_claims` | Tidak: deterministik per user+tanggal |
+| **Digital Flexing** | buka `/peringkat` | `titleFor($user, $rank)` | Tidak: dari XP nyata |
+| **FOMO Live Feed** | rotasi tiap 9 detik | `xp_transactions` orang lain | Tidak: data asli |
+| **Misi Rahasia** | 7 ketukan cepat pada Wira | `engagement_claims` (`period='once'`) | Tidak: sekali seumur akun |
+
+**Tiga lapis penahan hadiah palsu:**
+
+1. `throttle:20,1` pada grup `/misi-seru`
+2. `unique(user_id, kind, period)` di `engagement_claims`
+3. `idempotency_key` di `XpService::award()`
+
+Klien hanya mengirim **peristiwa** ("saya klik"), tidak pernah jumlah XP. Terbukti
+di uji: klaim kedua menghasilkan `{"xp":0,"already":true}` dan saldo tidak bergerak.
+
+> **Dua bug yang tertangkap saat pengujian**, bukan saat menulis kode:
+> penanda kotak harian dulu hanya berisi tanggal sehingga mahasiswa berikutnya di
+> lab kampus yang sama tidak pernah melihat kotaknya sendiri; dan modal
+> `aria-modal="true"` tidak memindahkan fokus sehingga pengguna keyboard tetap
+> menjelajah halaman di belakang modal.
+
+---
+
+## 8. Yang Menjaga Semua Ini Tetap Jujur
 
 Delapan aturan yang ditegakkan **di server**, bukan di JavaScript:
 
@@ -521,7 +662,7 @@ Permukaan verifikasi juga dibatasi rate limit: `throttle:12,1` pada semua rute
 
 ---
 
-## 6. Peta Rute per Peran
+## 9. Peta Rute per Peran
 
 ### Mahasiswa (middleware `auth`, `activity`)
 
@@ -580,7 +721,65 @@ Permukaan verifikasi juga dibatasi rate limit: `throttle:12,1` pada semua rute
 
 ---
 
-## 7. Berkas yang Perlu Dibuka Saat Presentasi
+## 10. Deployment — kebutuhan runtime nyata
+
+Aplikasi ini **tidak statis**. Yang wajib ada di server:
+
+| Kebutuhan | Dipakai untuk | Catatan |
+|---|---|---|
+| PHP ≥ 8.3 | seluruh aplikasi | `composer.json` mensyaratkan `^8.3` |
+| MySQL / MariaDB | data utama | SQLite jalan untuk lokal, **tidak aman** untuk multi-user |
+| Filesystem writable | `storage/` (bukti foto, sesi) | harus persisten antar-request |
+| `SESSION_DRIVER=database` | login | butuh tabel `sessions` |
+| `CACHE_STORE=database` | cache | butuh tabel `cache` |
+| `QUEUE_CONNECTION=database` | antrean | **tidak ada job yang di-dispatch**, jadi worker tidak wajib |
+
+**Yang tidak dibutuhkan:** Redis, queue worker, cron/scheduler (tidak ada
+`Schedule::` di kode), WebSocket. Ini membuat aplikasi bisa jalan di paket gratis
+yang paling sederhana sekalipun.
+
+### Kenapa Vercel tidak cocok
+
+Vercel menjalankan PHP sebagai **serverless function**: filesystem-nya read-only
+dan instance-nya berumur pendek. Tiga hal di aplikasi ini bentrok langsung:
+
+1. **Upload bukti foto** ditulis ke `storage/app/` — hilang setiap instance dibuang.
+2. **Sesi berbasis database** butuh koneksi MySQL persisten; serverless membuka
+   koneksi baru tiap request dan menghabiskan kuota pooler.
+3. **`php artisan migrate`/`db:seed`** tidak punya tempat jalan yang wajar.
+
+Secara teori bisa dipaksakan (runtime `vercel-community/php` + Postgres eksternal +
+S3), tetapi itu menambah tiga dependensi baru hanya untuk mengejar platform yang
+salah bentuk. Untuk karya lomba, risikonya tidak sepadan.
+
+### Pilihan yang realistis (semua tanpa kartu kredit)
+
+| Opsi | Gratis? | Cocok untuk OspekQuest | Catatan |
+|---|---|---|---|
+| **Laravel Cloud** | $5 kredit, 1 bulan pertama | ⭐ paling mulus | dibuat untuk Laravel; bisa scale-to-zero |
+| **Railway** | $1/bulan kredit tetap | ⭐ bagus | cukup untuk 1 app + MySQL kecil |
+| **Koyeb** | 1 web service, 512 MB | ✅ | butuh Dockerfile |
+| **Render** | 750 jam/bulan | ⚠️ | **tidur setelah 15 menit**; DB gratis berumur 30 hari |
+| **InfinityFree** | selamanya | ⚠️ | tanpa SSH, tanpa queue, performa terbatas |
+| **VPS kampus / GitHub Student** | gratis untuk mahasiswa | ⭐ | kontrol penuh, tapi Anda urus server sendiri |
+
+> **Rekomendasi untuk lomba:** Laravel Cloud atau Railway. Untuk juri, yang
+> penting adalah **tautan bisa dibuka dan responsif saat dinilai** — bukan
+> arsitekturnya. Hindari Render free karena spin-down 15 menit membuat klik
+> pertama terasa lambat tepat saat juri mencoba.
+
+### Checklist sebelum publik
+
+- [ ] `APP_ENV=production`, `APP_DEBUG=false`
+- [ ] `OSPEK_DEMO_LOGIN=false` — kalau tidak, siapa pun bisa masuk sebagai akun demo
+- [ ] `php artisan migrate --force` + `php artisan db:seed --class=QuestSeeder` (+ SideQuest, Reward, Achievement)
+- [ ] `php artisan storage:link` untuk bukti foto
+- [ ] `php artisan config:cache route:cache view:cache`
+- [ ] Ganti `APP_KEY` produksi dan sandi akun demo
+
+---
+
+## 11. Berkas yang Perlu Dibuka Saat Presentasi
 
 | Kalau juri bertanya… | Buka file ini |
 |---|---|
@@ -595,7 +794,7 @@ Permukaan verifikasi juga dibatasi rate limit: `throttle:12,1` pada semua rute
 
 ---
 
-## 8. Akun Demo untuk Demonstrasi
+## 12. Akun Demo untuk Demonstrasi
 
 Dari seeder, semuanya bersandi `password`:
 
@@ -618,7 +817,65 @@ Pasangan yang dipakai untuk menguji batas wewenang LO:
 `202653033` (gugus 04) sebagai mahasiswa, `LO-2022-001` sebagai LO yang **berhak**,
 dan `LO-2022-002` (gugus 01) sebagai LO yang harus **ditolak**.
 
-### Urutan demo yang paling meyakinkan
+## 13. Skrip video demo (target 3 menit)
+
+Juri menilai **apa yang mereka lihat dan ingat**, bukan berapa banyak fitur.
+Video yang menang adalah yang punya satu kalimat posisi yang jelas, tiga momen
+"oh" yang tak terduga, dan bukti kejujuran sistem.
+
+**Kalimat posisi (ucapkan di 15 detik pertama):**
+> "OSPEK biasanya berupa PDF dan grup WhatsApp. OspekQuest mengubahnya menjadi
+> peta misi yang membuat mahasiswa baru *ingin* menyelesaikannya — dan panitia
+> bisa membuktikan setiap misi benar-benar dikerjakan."
+
+#### Struktur waktu
+
+| Detik | Adegan | Yang harus terlihat | Kalimat kunci |
+|---|---|---|---|
+| 0–12 | Hook masalah | PDF rundown kusam → transisi keras ke peta misi neo-brutalist | kalimat posisi di atas |
+| 12–35 | **Peta Misi** | scroll kurva S, 3 babak, label mengambang, Wira | "13 modul, 3 babak, satu perjalanan" |
+| 35–60 | **Fokus Harian** | dasbor: Fokus Hari Ini, 3 misi terdekat, CTA | "tidak ada 13 tugas sekaligus — hanya hari ini" |
+| 60–85 | **Bukti jujur** | MOD-01 foto → XP **belum** naik → LO setujui → XP naik | "XP tidak diberikan karena mengklaim selesai" |
+| 85–105 | **Gugus Wars** | tali tertarik saat satu modul selesai | "kompetisi antargugus, bukan antar-individu" |
+| 105–130 | **Bursa Hadiah** | koin 1.200 → tukar lanyard → kode klaim | "XP tidak bisa dipakai belanja — jadi peringkat tetap bermakna" |
+| 130–150 | **Side Quest** | 5 misi sosial, gerbang progres | "mahasiswa baru saling mengenal, bukan hanya klik" |
+| 150–165 | **Anti-curang** | kirim token sama 2× → ditolak; akses LO gugus lain → 403 | "setiap klaim bisa diaudit" |
+| 165–180 | Penutup | sertifikat + angka | "147 tes otomatis, 0 bug terbuka" |
+
+#### Tiga momen "oh" yang harus dipertahankan
+
+1. **XP tidak naik setelah unggah bukti.** Juri mengira tombol selesai langsung
+   memberi XP. Justru menahannya yang membuktikan sistemnya serius.
+2. **Gugus Wars bergerak saat satu modul selesai.** Perubahan visual instan jauh
+   lebih meyakinkan daripada tabel angka.
+3. **Kotak Misteri meledak dengan confetti** lalu menolak dibuka kedua kali.
+   Ini menunjukkan gamifikasi *dan* integritas dalam satu adegan.
+
+#### Aturan produksi
+
+- **Rekam 1080p, 30 fps, kursor besar.** Zoom browser 110% agar teks terbaca di
+  YouTube.
+- **Tanpa musik upbeat berlebihan.** Pakai satu track instrumental rendah; suara
+  klik aplikasi sudah jadi efek.
+- **Satu take per adegan, jangan satu take panjang.** Sisipkan potongan keras
+  (hard cut), bukan transisi halus — cocok dengan gaya neo-brutalist.
+- **Siapkan data sebelum rekam.** Akun demo harus sudah punya koin + progres agar
+  tidak ada momen kosong. Jalankan seeder dulu.
+- **Rekam bagian "gagal" lebih dulu** (token ditolak, 403). Ini yang paling
+  sering terlupa dan paling meyakinkan.
+- **Subtitle Indonesia wajib.** Juri mungkin menonton tanpa suara.
+- **Tutup dengan URL yang bisa diketik**, tampil minimal 5 detik.
+
+#### Yang **jangan** dilakukan
+
+- Jangan mulai dengan logo dan musik epik 10 detik — juri kehilangan 5% durasi.
+- Jangan menjelaskan stack di video; itu tugas proposal.
+- Jangan tunjukkan halaman admin/Quest Builder kecuali ada 5 detik sisa; juri
+  menilai pengalaman mahasiswa.
+- Jangan pakai rekaman scroll cepat tanpa narasi; penonton tidak tahu apa yang
+  penting.
+
+### 13.1 Urutan demo live di depan juri
 
 1. **Login mahasiswa** `202653033` → tunjukkan dasbor, hari orientasi, peta misi
 2. **Buka MOD-01** → unggah bukti foto → perhatikan **XP belum bertambah**
@@ -631,12 +888,12 @@ dan `LO-2022-002` (gugus 01) sebagai LO yang harus **ditolak**.
 9. **Login Admin** → tunjukkan import CSV, pembuatan gugus, Quest Builder
 10. **Sertifikat**: jalankan `php storage/app/finish-all.php 202653012` lalu buka `/sijil`
 
-    Skrip itu menyelesaikan **seluruh 8 modul dalam satu putaran** lewat jalur service
+    Skrip itu menyelesaikan **seluruh 13 modul utama dalam satu putaran** lewat jalur service
     yang sah — termasuk mengunggah bukti foto **lalu langsung menyetujuinya** di langkah
     yang sama. Ini penting: kalau persetujuan ditunda sampai akhir, MOD-02 dan seterusnya
     masih terkunci saat gilirannya tiba dan skrip hanya menghasilkan 7/8.
 
-    Hasil terverifikasi: `8/8 modul`, `3.770 XP`, `Level 6`, `5 lencana`, sertifikat
+    Hasil terverifikasi: `13/13 modul`, `Level 6`, `5 lencana`, sertifikat
     `OSQ-26-E87761CE` terbuka dan lolos verifikasi publik.
 
 > Di lingkungan demo sebelum tanggal orientasi, semua gerbang waktu otomatis terbuka
