@@ -5,11 +5,14 @@ use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EngagementController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\LiaisonOfficerController;
 use App\Http\Controllers\MentorController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuestBuilderController;
+use App\Http\Controllers\RewardController;
+use App\Http\Controllers\SideQuestController;
 use App\Http\Controllers\QuestController;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\VerificationController;
@@ -76,6 +79,36 @@ Route::middleware(['auth', 'activity'])->group(function (): void {
     Route::post('/profil/tetapan', [ProfileController::class, 'updateSettings'])->name('profile.settings');
     Route::post('/profil/sandi', [ProfileController::class, 'updatePassword'])->name('profile.password');
     Route::post('/bantuan/tiket', [ProfileController::class, 'submitHelpTicket'])->name('help.ticket');
+
+    /*
+     * Engagement (Gugus Wars, Kotak Misteri, Misi Rahasia).
+     *
+     * Dibatasi rate limit karena ini permukaan yang memberi hadiah XP: tanpa
+     * batas, satu skrip bisa menembak klaim berulang. Idempotency key dan
+     * unique index tetap jadi pengaman terakhir, tapi rate limit menghemat
+     * kerja database.
+     */
+    /*
+     * Bursa Hadiah. Penukaran dibatasi lebih ketat daripada halaman biasa
+     * karena setiap panggilan memindahkan saldo koin.
+     */
+    /*
+     * Side Quest: misi sosial opsional. Tidak memblokir modul utama.
+     */
+    Route::get('/misi-samping', [SideQuestController::class, 'index'])->name('side-quests.index');
+    Route::post('/misi-samping/{quest}/mulai', [SideQuestController::class, 'start'])
+        ->name('side-quests.start');
+
+    Route::get('/bursa', [RewardController::class, 'index'])->name('rewards.index');
+    Route::post('/bursa/{reward}/tukar', [RewardController::class, 'redeem'])
+        ->middleware('throttle:10,1')
+        ->name('rewards.redeem');
+
+    Route::prefix('misi-seru')->name('engagement.')->middleware('throttle:20,1')->group(function (): void {
+        Route::get('/ringkasan', [EngagementController::class, 'summary'])->name('summary');
+        Route::post('/kotak-harian', [EngagementController::class, 'claimDailyBox'])->name('daily-box');
+        Route::post('/misi-rahasia', [EngagementController::class, 'claimSecretMission'])->name('secret-mission');
+    });
 });
 
 /*

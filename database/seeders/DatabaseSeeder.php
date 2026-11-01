@@ -24,8 +24,10 @@ class DatabaseSeeder extends Seeder
         $this->call([
             GroupSeeder::class,
             QuestSeeder::class,
+            SideQuestSeeder::class,
             QuizQuestionSeeder::class,
             AchievementSeeder::class,
+            RewardSeeder::class,
             FaqSeeder::class,
         ]);
 
