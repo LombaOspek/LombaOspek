@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './components/quest-path.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -19,24 +20,38 @@
 
     --color-ink: #17150f;
     --color-ink-soft: #4a463c;
-    /* 5.34:1 pada --color-paper, lolos WCAG AA untuk teks kecil. */
-    --color-ink-faint: #6b6659;
+    /* 6.52:1 pada --color-paper. Digelapkan dari #6b6659 karena canvas
+       yang lebih terang membuat token lama gagal AA (3.98). */
+    --color-ink-faint: #5f5a4e;
 
-    --color-canvas: #d6d2c6;
-    --color-shell: #ece9df;
-    --color-paper: #faf7ef;
-    --color-paper-dim: #f2eee2;
+    /* Netral sedikit lebih sejuk agar biru WIRA tidak bertabrakan dengan
+       kuning krem lama. */
+    --color-canvas: #dbd7cd;
+    --color-shell: #efede6;
+    --color-paper: #fbf9f4;
+    --color-paper-dim: #f3f0e7;
 
-    --color-amber: #f0b429;
-    /* 5.43:1 pada paper — aman untuk label kecil. */
-    --color-amber-deep: #8a5c00;
-    /* 4.73:1 dengan teks putih. */
+    /* ---- Warna resmi maskot WIRA UMK (Mascot Guide 2025) ----
+       Biru #2758a3 dan Kuning #f7bc29 adalah warna dominan maskot
+       sekaligus warna utama logo UMK. */
+    --color-brand: #2758a3;
+    --color-brand-deep: #1c3f75;
+    --color-brand-soft: #c8d6ec;
+
+    --color-gold: #f7bc29;
+    /* 5.53:1 pada paper — aman untuk label kecil. Teks di atas gold
+       wajib memakai ink (10.59:1); putih di atas gold GAGAL (1.72). */
+    --color-gold-deep: #8a5c00;
+
+    /* Hijau dipakai khusus status selesai/benar. Diganti dari teal
+       (#217a6f) karena jaraknya hanya 62 dari biru brand — terlalu dekat,
+       status "selesai" akan tertukar dengan warna primer. 7.09:1 dgn putih. */
+    --color-success: #14653f;
+    --color-success-deep: #0e4a2d;
+
+    /* 4.98:1 dengan teks putih. */
     --color-vermilion: #c4451f;
     --color-vermilion-deep: #99300f;
-    /* 5.15:1 dengan teks putih. */
-    --color-teal: #217a6f;
-    --color-teal-deep: #175f56;
-    --color-sky: #a8cdd8;
 
     --radius-xs: 4px;
     --radius-sm: 7px;
@@ -73,8 +88,8 @@
     }
 
     ::selection {
-        background: var(--color-amber);
-        color: var(--color-ink);
+        background: var(--color-brand);
+        color: #ffffff;
     }
 
     h1,
@@ -211,8 +226,10 @@
         box-shadow: var(--shadow-flat-sm);
     }
 
+    /* CTA tetap kuning: ink di atas gold = 10.59:1. Kuning adalah warna
+       "semangat & harapan" WIRA — dipakai untuk ajakan bertindak. */
     .btn-primary {
-        background-color: var(--color-amber);
+        background-color: var(--color-gold);
         color: var(--color-ink);
     }
 
@@ -227,6 +244,18 @@
 
     .btn-accent:hover {
         background-color: #ef6a41;
+    }
+
+    /* Tombol biru: dipakai untuk aksi bernuansa identitas/institusi
+       (mis. "Buka verifikasi", "Kerjakan kuis") agar kuning tetap eksklusif
+       untuk ajakan utama. */
+    .btn-brand {
+        background-color: var(--color-brand);
+        color: #ffffff;
+    }
+
+    .btn-brand:hover {
+        background-color: var(--color-brand-deep);
     }
 
     .btn-ink {
@@ -268,7 +297,17 @@
         letter-spacing: 0.08em;
         text-transform: uppercase;
         line-height: 1.35;
-        white-space: nowrap;
+        /* Badge boleh membungkus di layar sempit; di layar lebar tetap satu baris
+           supaya label status tidak terpecah. */
+        white-space: normal;
+        max-width: 100%;
+        text-wrap: balance;
+    }
+
+    @media (min-width: 640px) {
+        .stamp {
+            white-space: nowrap;
+        }
     }
 
     .card {
@@ -297,13 +336,17 @@
     .rail > span {
         display: block;
         height: 100%;
-        background-color: var(--color-teal);
+        background-color: var(--color-brand);
         border-right: 1.5px solid var(--color-ink);
         transition: width 400ms ease;
     }
 
-    .rail-amber > span {
-        background-color: var(--color-amber);
+    .rail-gold > span {
+        background-color: var(--color-gold);
+    }
+
+    .rail-success > span {
+        background-color: var(--color-success);
     }
 
     .rail-vermilion > span {
@@ -352,14 +395,45 @@
         letter-spacing: -0.03em;
     }
 
-    .stripe-amber {
+    .stripe-gold {
         background-image: repeating-linear-gradient(
             -45deg,
-            var(--color-amber) 0 10px,
-            #f6c857 10px 20px
+            var(--color-gold) 0 10px,
+            #f8ca52 10px 20px
+        );
+    }
+
+    /* Garis pita biru untuk kartu yang sedang berjalan. */
+    .stripe-brand {
+        background-image: repeating-linear-gradient(
+            -45deg,
+            var(--color-brand) 0 10px,
+            var(--color-brand-deep) 10px 20px
         );
     }
 }
+
+    /* ------------------------------------------------------------------
+       Ilustrasi modul (App\Support\QuestArt)
+       Kotak bergaris tebal agar ilustrasi SVG terbaca sebagai "kartu
+       gambar", bukan glyph kecil seperti .icon.
+       ------------------------------------------------------------------ */
+    .quest-art {
+        overflow: hidden;
+        border: 2px solid var(--color-ink);
+        border-radius: 0.7rem;
+        background: var(--color-brand-soft);
+
+        & > svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    }
+
+    .quest-art-locked {
+        filter: grayscale(1) opacity(0.55);
+    }
 
 @keyframes node-pulse {
     0%,
@@ -372,14 +446,291 @@
     50% {
         box-shadow:
             0 0 0 3px var(--color-paper),
-            0 0 0 9px color-mix(in oklab, var(--color-amber) 60%, transparent),
+            0 0 0 9px color-mix(in oklab, var(--color-brand) 55%, transparent),
             var(--shadow-flat-lg);
     }
 }
 
-@media print, (prefers-reduced-motion: reduce) {
-    .node-ring-active {
-        animation: none;
+/* --------------------------------------------------------------------------
+   Bahasa Gerak OspekQuest (Fase 1 — Fondasi Gerak Gamifikasi)
+   Seluruh animasi dimatikan otomatis oleh blok prefers-reduced-motion di bawah.
+   -------------------------------------------------------------------------- */
+
+@keyframes rise-in {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pop-in {
+    0% {
+        opacity: 0;
+        transform: scale(0.85);
+    }
+    70% {
+        transform: scale(1.04);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes stamp-in {
+    0% {
+        opacity: 0;
+        transform: scale(1.4) rotate(-8deg);
+    }
+    60% {
+        transform: scale(0.96) rotate(1deg);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+@keyframes float-idle {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-6px);
+    }
+}
+
+@keyframes shimmer-sweep {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+@keyframes pulse-soft {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.9;
+    }
+}
+
+/* Kelas utilitas untuk gerak terstruktur */
+.animate-rise {
+    animation: rise-in 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-pop {
+    animation: pop-in 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.animate-stamp {
+    animation: stamp-in 460ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.animate-float {
+    animation: float-idle 3.6s ease-in-out infinite;
+}
+
+.animate-pulse-soft {
+    animation: pulse-soft 2.2s ease-in-out infinite;
+}
+
+/* --------------------------------------------------------------------------
+   Fase 2 — Engagement hook: gugus wars, kotak misteri, bingkai gelar, easter
+   egg. Semua animasi di bawah otomatis dimatikan oleh media query
+   prefers-reduced-motion yang sama; tidak ada animasi yang butuh JS frame.
+   -------------------------------------------------------------------------- */
+
+/* Gugus Wars: tali tarik tambang. --war-ratio diisi server 0..1 (0.5 = imbang).
+   Geseran dibatasi +/-42% (bukan 50%) supaya penanda VS selalu terlihat di
+   dalam klip dan tidak ada anak elemen yang menonjol keluar kartu saat
+   kedudukan sangat timpang. */
+.war-rope {
+    --war-ratio: 0.5;
+    transform: translateX(calc((var(--war-ratio) - 0.5) * 84%));
+    transition: transform 900ms cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+/* Bendera penanda tengah tali ikut tertarik namun tetap tegak. */
+.war-flag {
+    transform: translateX(calc((var(--war-ratio) - 0.5) * 84%)) rotate(-3deg);
+    transition: transform 900ms cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+/* Kotak misteri: melompat saat modal dibuka. */
+@keyframes box-bounce {
+    0% {
+        transform: scale(0.6) translateY(30px);
+        opacity: 0;
+    }
+    45% {
+        transform: scale(1.12) translateY(-8px);
+        opacity: 1;
+    }
+    70% {
+        transform: scale(0.96) translateY(3px);
+    }
+    100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+.animate-box-bounce {
+    animation: box-bounce 620ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Penutup kotak berputar saat dibuka (shake ringan, bukan memudar). */
+@keyframes lid-shake {
+    0%, 100% { transform: rotate(0); }
+    20% { transform: rotate(-14deg) translateY(-3px); }
+    50% { transform: rotate(9deg) translateY(-6px); }
+    80% { transform: rotate(-4deg) translateY(-2px); }
+}
+
+.animate-lid-shake {
+    animation: lid-shake 450ms ease-in-out;
+}
+
+/* Bingkai avatar Digital Flexing: emas polos, api menyala, legenda berkilau. */
+.frame-gold {
+    border: 2px solid var(--color-ink);
+    box-shadow: 0 0 0 2px var(--color-gold), var(--shadow-flat);
+}
+
+@keyframes ember-flicker {
+    0%, 100% {
+        box-shadow: 0 0 0 2px var(--color-gold), 0 0 0 4px var(--color-vermilion), var(--shadow-flat);
+    }
+    50% {
+        box-shadow: 0 0 0 2px var(--color-vermilion), 0 0 0 5px var(--color-gold), var(--shadow-flat);
+    }
+}
+
+.frame-ember {
+    border: 2px solid var(--color-ink);
+    animation: ember-flicker 1.6s ease-in-out infinite;
+}
+
+.frame-legend {
+    border: 2px solid var(--color-ink);
+    box-shadow: 0 0 0 2px var(--color-gold), 0 0 0 4px var(--color-brand), var(--shadow-flat);
+}
+
+.frame-silver {
+    border: 2px solid var(--color-ink);
+    box-shadow: 0 0 0 2px var(--color-ink-faint), var(--shadow-flat-sm);
+}
+
+/* Easter egg: peta bergetar saat Misi Rahasia terbuka. */
+@keyframes secret-shake {
+    0%, 100% { transform: translate(0, 0) rotate(0); }
+    20% { transform: translate(-4px, 2px) rotate(-0.6deg); }
+    40% { transform: translate(4px, -2px) rotate(0.6deg); }
+    60% { transform: translate(-3px, -1px) rotate(-0.4deg); }
+    80% { transform: translate(3px, 1px) rotate(0.4deg); }
+}
+
+.animate-secret-shake {
+    animation: secret-shake 480ms ease-in-out;
+}
+
+/* FOMO live feed: kartu meluncur dari kanan lalu keluar. */
+@keyframes feed-slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(48px) rotate(1deg);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) rotate(0);
+    }
+}
+
+@keyframes feed-slide-out {
+    to {
+        opacity: 0;
+        transform: translateX(60px) rotate(-1deg);
+    }
+}
+
+.animate-feed-in {
+    animation: feed-slide-in 360ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.animate-feed-out {
+    animation: feed-slide-out 300ms ease-in both;
+}
+
+/* Ledakan confetti ke segala arah (JS hanya membuat potongan, geraknya CSS). */
+@keyframes confetti-burst {
+    0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) rotate(0deg) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(calc(-50% + var(--burst-x, 0px)), calc(-50% + var(--burst-y, 0px))) rotate(var(--burst-rot, 180deg)) scale(0.6);
+    }
+}
+
+.confetti-piece {
+    animation: confetti-burst 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Efek kilau pada kartu reward / modul aktif */
+.shimmer-active {
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(247, 188, 41, 0.18) 50%,
+        transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer-sweep 3s ease-in-out infinite;
+}
+
+/* Penjaga aksesibilitas: matikan semua animasi dan percepat transisi */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .node-ring-active,
+    .animate-rise,
+    .animate-pop,
+    .animate-stamp,
+    .animate-float,
+    .animate-pulse-soft,
+    .shimmer-active,
+    .animate-box-bounce,
+    .animate-lid-shake,
+    .animate-secret-shake,
+    .animate-feed-in,
+    .animate-feed-out,
+    .confetti-piece,
+    .frame-ember {
+        animation: none !important;
+    }
+
+    /* Tali tarik tambang tetap menampilkan hasil akhirnya, hanya tanpa gerak. */
+    .war-rope,
+    .war-flag {
+        transition: none !important;
     }
 }
 

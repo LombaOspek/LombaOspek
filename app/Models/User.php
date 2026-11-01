@@ -26,6 +26,7 @@ use Illuminate\Notifications\Notifiable;
     'mentor_name',
     'phone',
     'xp',
+    'coins',
     'level',
     'streak_days',
     'last_active_on',
@@ -54,6 +55,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'role' => UserRole::class,
             'xp' => 'integer',
+            'coins' => 'integer',
             'level' => 'integer',
             'streak_days' => 'integer',
             'last_active_on' => 'date',
@@ -108,6 +110,23 @@ class User extends Authenticatable
     public function xpTransactions(): HasMany
     {
         return $this->hasMany(XpTransaction::class);
+    }
+
+    /**
+     * Ledger koin. Terpisah dari XP: XP tidak pernah berkurang, koin bisa
+     * dibelanjakan di Bursa Hadiah.
+     */
+    public function coinTransactions(): HasMany
+    {
+        return $this->hasMany(CoinTransaction::class);
+    }
+
+    /**
+     * Klaim hadiah milik mahasiswa ini.
+     */
+    public function rewardRedemptions(): HasMany
+    {
+        return $this->hasMany(RewardRedemption::class);
     }
 
     public function submissions(): HasMany

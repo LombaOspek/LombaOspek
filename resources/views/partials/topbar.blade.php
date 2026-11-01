@@ -32,7 +32,7 @@
         <div class="flex items-center gap-1.5">
             {{-- Rentetan: data nyata dari StreakService --}}
             <span
-                class="hidden items-center gap-1.5 rounded-sm border-2 border-ink bg-amber px-2 py-1 font-display text-[0.7rem] font-bold shadow-[var(--shadow-flat-sm)] sm:inline-flex"
+                class="hidden items-center gap-1.5 rounded-sm border-2 border-ink bg-gold px-2 py-1 font-display text-[0.7rem] font-bold shadow-[var(--shadow-flat-sm)] sm:inline-flex"
                 title="Hari berturut-turut Anda membuka portal"
             >
                 <x-icon name="flame" class="size-3.5 text-vermilion-deep" :stroke="2" />
@@ -44,10 +44,22 @@
                 class="inline-flex items-center gap-1.5 rounded-sm border-2 border-ink bg-paper px-2 py-1 font-display text-[0.7rem] font-bold shadow-[var(--shadow-flat-sm)]"
                 title="Total pengalaman terkumpul"
             >
-                <x-icon name="bolt" class="size-3.5 text-amber-deep" :stroke="2" />
-                <span class="numeric">{{ number_format($barUser?->xp ?? 0, 0, ',', '.') }}</span>
+                <x-icon name="bolt" class="size-3.5 text-gold-deep" :stroke="2" />
+                <span class="numeric" data-xp-value>{{ number_format($barUser?->xp ?? 0, 0, ',', '.') }}</span>
                 <span class="hidden text-[0.6rem] font-extrabold text-ink-faint sm:inline">XP</span>
             </span>
+
+            {{-- Saldo koin: mata uang belanja, terpisah dari XP. --}}
+            @if ($barUser)
+                <a
+                    href="{{ route('rewards.index') }}"
+                    class="inline-flex items-center gap-1.5 rounded-sm border-2 border-ink bg-gold px-2 py-1 font-display text-[0.7rem] font-bold shadow-[var(--shadow-flat-sm)] transition hover:-translate-y-0.5"
+                    title="Saldo koin untuk Bursa Hadiah"
+                >
+                    <x-icon name="gift" class="size-3.5" :stroke="2.2" />
+                    <span class="numeric" data-coin-balance>{{ number_format($barUser->coins, 0, ',', '.') }}</span>
+                </a>
+            @endif
 
             {{-- Toggle suara: sinkron ke preferensi akun --}}
             <button
@@ -63,7 +75,7 @@
 
             <a
                 href="{{ route('profile') }}"
-                class="grid size-9 shrink-0 place-items-center rounded-full border-2 border-ink bg-sky font-display text-[0.78rem] font-extrabold shadow-[var(--shadow-flat-sm)] transition hover:bg-teal hover:text-white"
+                class="grid size-9 shrink-0 place-items-center rounded-full border-2 border-ink bg-brand-soft font-display text-[0.78rem] font-extrabold shadow-[var(--shadow-flat-sm)] transition hover:bg-brand hover:text-white"
                 aria-label="Buka profil saya"
             >
                 {{ mb_strtoupper(mb_substr($barUser?->name ?? 'M', 0, 1)) }}

@@ -5,6 +5,9 @@
  * gamifikasi (XP, gating, penilaian) tetap di server.
  */
 
+import { initEngagement } from './engagement.js';
+import { initRewardStore } from './rewards.js';
+
 const prefersReducedMotion = () =>
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -47,6 +50,8 @@ export function playTone(kind = 'tap') {
         tap: [420, 300],
         reward: [523.25, 659.25, 783.99],
         unlock: [392, 523.25, 659.25, 880],
+        levelup: [392, 523.25, 659.25, 783.99, 1046.5],
+        complete: [587.33, 880],
         warn: [240, 190],
     }[kind] ?? [400];
 
@@ -87,8 +92,8 @@ const TONE_GLYPH = {
 };
 
 const TONE_CLASS = {
-    success: 'bg-teal text-white',
-    warning: 'bg-amber text-ink',
+    success: 'bg-success text-white',
+    warning: 'bg-gold text-ink',
     danger: 'bg-vermilion text-white',
     neutral: 'bg-ink text-paper',
 };
@@ -175,6 +180,24 @@ export function toast({ title, message = '', tone = 'success' } = {}) {
 export function boot() {
     document.documentElement.dataset.sound = soundEnabled ? '1' : '0';
 
+    // Lima fitur engagement (Kotak Misteri, FOMO feed, Misi Rahasia).
+    // Gugus Wars dan gelar leaderboard dirender server; tidak butuh JS.
+    initEngagement();
+    initRewardStore();
+
+    // Level halaman sebelumnya: dipakai untuk mendeteksi kenaikan level.
+    const root = document.documentElement;
+    const currentLevel = Number(root.dataset.level || 0);
+    const storedLevel = Number(window.sessionStorage.getItem('ospek.level') || 0);
+
+    if (storedLevel > 0) {
+        root.dataset.levelBefore = String(storedLevel);
+    }
+
+    if (currentLevel > 0) {
+        window.sessionStorage.setItem('ospek.level', String(currentLevel));
+    }
+
     document.querySelectorAll('[data-sound-toggle]').forEach((el) => {
         el.addEventListener('click', () => {
             soundEnabled = !soundEnabled;
@@ -202,11 +225,233 @@ export function boot() {
             });
         });
     });
+
+    // Stagger animasi otomatis untuk kontainer bertanda data-stagger
+    document.querySelectorAll('[data-stagger]').forEach((container) => {
+        if (prefersReducedMotion()) return;
+        const delay = Number(container.dataset.stagger || 40);
+        Array.from(container.children).forEach((child, index) => {
+            child.style.animationDelay = `${index * delay}ms`;
+        });
+    });
+
+    // Angka berhitung (counter animation) untuk elemen [data-counter]
+    document.querySelectorAll('[data-counter]').forEach((el) => {
+        if (prefersReducedMotion()) return;
+        const target = Number(el.dataset.counter || 0);
+        const duration = 600;
+        const start = performance.now();
+        const initial = 0;
+
+        function tick(now) {
+            const progress = Math.min((now - start) / duration, 1);
+            // easeOutQuad
+            const eased = 1 - (1 - progress) * (1 - progress);
+            const current = Math.round(initial + (target - initial) * eased);
+            el.textContent = current.toLocaleString('id-ID');
+            if (progress < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+    });
+}
+
+/**
+ * Konfeti geometris murni DOM (tanpa canvas, tanpa library external).
+ * Ringan: 18 keping SVG flat yang meledak lalu hilang dalam 900ms.
+ */
+export function burstConfetti(originX = window.innerWidth / 2, originY = window.innerHeight / 2) {
+    if (prefersReducedMotion()) return;
+
+    const colors = ['#2758a3', '#f7bc29', '#14653f', '#c4451f', '#ffffff'];
+    const container = document.createElement('div');
+    container.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;';
+    document.body.appendChild(container);
+
+    const count = 22;
+    for (let i = 0; i < count; i++) {
+        const piece = document.createElement('div');
+        const color = colors[i % colors.length];
+        const angle = (i / count) * 2 * Math.PI + (Math.random() - 0.5) * 0.4;
+        const dist = 80 + Math.random() * 140;
+        const dx = Math.cos(angle) * dist;
+        const dy = Math.sin(angle) * dist - 30; // sedikit dorongan ke atas
+
+        const isCircle = i % 3 === 0;
+        piece.style.cssText = `
+            position:absolute;
+            left:${originX}px; top:${originY}px;
+            width:${isCircle ? 8 : 10}px; height:${isCircle ? 8 : 6}px;
+            background:${color};
+            border:1.5px solid #17150f;
+            border-radius:${isCircle ? '50%' : '2px'};
+            transform:translate(-50%, -50%);
+            transition:transform 700ms cubic-bezier(0.2, 0.9, 0.3, 1.2), opacity 500ms ease 300ms;
+        `;
+        container.appendChild(piece);
+
+        requestAnimationFrame(() => {
+            piece.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(${Math.random() * 360}deg)`;
+            piece.style.opacity = '0';
+        });
+    }
+
+    setTimeout(() => container.remove(), 950);
+}
+
+/**
+ * Overlay "Level Up" — muncul saat level pengguna naik setelah aksi.
+ * Seluruh teks dimasukkan lewat textContent (bukan innerHTML) karena
+ * `title` berasal dari config/data server; ini menutup jalur XSS.
+ */
+export function levelUp({ level, title, sound = true } = {}) {
+    if (document.getElementById('levelup-overlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'levelup-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', 'Level naik');
+    overlay.className = 'fixed inset-0 z-[10000] flex items-center justify-center bg-ink/70 p-4 backdrop-blur-sm';
+
+    const card = document.createElement('div');
+    card.className = 'relative w-full max-w-sm overflow-hidden rounded-xl border-[3px] border-ink bg-paper p-6 text-center';
+    card.style.boxShadow = '10px 10px 0 0 var(--color-ink)';
+
+    const stripe = document.createElement('div');
+    stripe.className = 'absolute inset-x-0 top-0 h-2 bg-gold';
+
+    const kicker = document.createElement('p');
+    kicker.className = 'mt-2 text-[0.6rem] font-extrabold uppercase tracking-[0.2em] text-gold-deep';
+    kicker.textContent = 'Level Naik';
+
+    const ring = document.createElement('div');
+    ring.className = 'mx-auto mt-3 grid size-24 place-items-center rounded-full border-[3px] border-ink bg-gold';
+    ring.style.boxShadow = 'var(--shadow-flat)';
+    const badge = document.createElement('span');
+    badge.className = 'numeric font-display text-[2.4rem] font-extrabold leading-none';
+    badge.textContent = String(level ?? '');
+    ring.appendChild(badge);
+
+    const heading = document.createElement('p');
+    heading.className = 'mt-3 font-display text-[1.15rem] font-extrabold leading-tight';
+    heading.textContent = title ?? 'Pangkat baru terbuka';
+
+    const body = document.createElement('p');
+    body.className = 'mt-1 text-[0.74rem] font-medium leading-relaxed text-ink-soft';
+    body.textContent = 'Perjalanan Anda naik satu tingkat. Teruskan sampai sertifikat!';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'btn btn-primary mt-4 w-full';
+    closeBtn.setAttribute('data-levelup-close', '');
+    closeBtn.textContent = 'Lanjutkan Perjalanan';
+
+    card.append(stripe, kicker, ring, heading, body, closeBtn);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+
+    if (sound) {
+        playTone('levelup');
+    }
+
+    const close = () => {
+        overlay.style.opacity = '0';
+        overlay.style.transition = 'opacity 180ms ease';
+        window.setTimeout(() => {
+            overlay.remove();
+            document.body.style.overflow = '';
+        }, 190);
+    };
+
+    closeBtn.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function esc(e) {
+        if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+    });
+}
+
+/**
+ * XP burst: angka "+N XP" melayang dari elemen sumber ke bilah XP di sidebar.
+ */
+export function xpBurst(amount, sourceEl = null) {
+    if (prefersReducedMotion() || !amount) return;
+
+    const from = sourceEl?.getBoundingClientRect();
+    const target = document.querySelector('[data-xp-bar]')?.getBoundingClientRect();
+
+    const startX = from ? from.left + from.width / 2 : window.innerWidth / 2;
+    const startY = from ? from.top + from.height / 2 : window.innerHeight / 2;
+
+    const chip = document.createElement('div');
+    chip.textContent = `+${amount} XP`;
+    chip.style.cssText = `
+        position:fixed; left:${startX}px; top:${startY}px;
+        transform:translate(-50%,-50%) scale(0.8);
+        padding:4px 10px; border:2px solid #17150f; border-radius:999px;
+        background:#f7bc29; color:#17150f;
+        font:800 12px/1 "Plus Jakarta Sans",sans-serif; letter-spacing:.04em;
+        box-shadow:3px 3px 0 #17150f; z-index:9999; pointer-events:none;
+        transition:transform 760ms cubic-bezier(.2,.9,.3,1.1), left 760ms cubic-bezier(.4,0,.3,1),
+                   top 760ms cubic-bezier(.4,0,.3,1), opacity 320ms ease 560ms;
+    `;
+    document.body.appendChild(chip);
+
+    requestAnimationFrame(() => {
+        chip.style.transform = 'translate(-50%,-50%) scale(1.15)';
+        if (target) {
+            chip.style.left = `${target.left + target.width / 2}px`;
+            chip.style.top = `${target.top + 12}px`;
+            chip.style.opacity = '0.2';
+        } else {
+            chip.style.top = `${startY - 60}px`;
+            chip.style.opacity = '0';
+        }
+    });
+
+    window.setTimeout(() => chip.remove(), 1100);
+}
+
+
+/**
+ * Peta gelar level, disuntik dari config/ospek.php lewat meta tag
+ * supaya tidak ada daftar gelar yang di-hardcode di dua tempat.
+ */
+function levelTitles() {
+    const el = document.querySelector('meta[name="level-titles"]');
+    if (!el) return {};
+
+    // <meta> tidak punya textContent — nilainya ada di atribut content.
+    try {
+        return JSON.parse(el.getAttribute('content') || '{}');
+    } catch {
+        return {};
+    }
+}
+
+/**
+ * Deteksi kenaikan level: bandingkan dataset.level sebelum dan sesudah.
+ * Mengembalikan detail level baru bila naik, atau null.
+ */
+export function detectLevelUp() {
+    const root = document.documentElement;
+    const before = Number(root.dataset.levelBefore || 0);
+    const after = Number(root.dataset.level || 0);
+
+    if (!before || !after || after <= before) return null;
+
+    const titles = levelTitles();
+
+    return { level: after, title: titles[after] || 'Pangkat baru terbuka' };
 }
 
 window.Ospek = {
     toast,
     playTone,
+    burstConfetti,
+    levelUp,
+    xpBurst,
+    detectLevelUp,
     setSound(value) {
         soundEnabled = Boolean(value);
         document.documentElement.dataset.sound = soundEnabled ? '1' : '0';

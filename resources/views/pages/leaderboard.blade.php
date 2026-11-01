@@ -36,12 +36,12 @@
                     @php
                         $entry = $podium->get($slot);
                         $heights = [0 => 'h-24', 1 => 'h-20', 2 => 'h-16'];
-                        $fills = [0 => 'bg-amber', 1 => 'bg-sky/70', 2 => 'bg-vermilion/20'];
+                        $fills = [0 => 'bg-gold', 1 => 'bg-brand-soft/70', 2 => 'bg-vermilion/20'];
                     @endphp
 
                     @if ($entry)
                         <div class="flex flex-col items-center">
-                            <span class="grid size-9 place-items-center rounded-full border-2 border-ink bg-sky font-display text-[0.72rem] font-extrabold">
+                            <span class="grid size-9 place-items-center rounded-full border-2 border-ink bg-brand-soft font-display text-[0.72rem] font-extrabold">
                                 {{ mb_strtoupper(mb_substr($entry['user']->name, 0, 1)) }}
                             </span>
                             <p class="mt-1 line-clamp-1 text-center text-[0.62rem] font-bold leading-tight">
@@ -59,23 +59,57 @@
 
             <ol class="mt-3 flex flex-col divide-y-2 divide-ink/10 border-t-2 border-ink/15">
                 @foreach ($top as $entry)
-                    @php $leader = $entry['user']; @endphp
+                    @php
+                        $leader = $entry['user'];
+                        // Digital Flexing: gelar + bingkai avatar ditentukan dari
+                        // XP dan peringkat nyata, bukan dipilih sendiri.
+                        $flex = $titles[$leader->getKey()] ?? ['label' => 'Maba Baru', 'frame' => 'plain'];
+                        $frameClass = match ($flex['frame']) {
+                            'gold' => 'frame-gold',
+                            'ember' => 'frame-ember',
+                            'legend' => 'frame-legend',
+                            'silver' => 'frame-silver',
+                            default => 'border-[1.5px] border-ink',
+                        };
+                    @endphp
                     <li class="flex items-center gap-2.5 py-2 {{ $entry['is_me'] ? '' : '' }}">
                         <span class="w-5 shrink-0 text-center font-mono text-[0.7rem] font-bold {{ $entry['rank'] <= 3 ? 'text-vermilion-deep' : 'text-ink-faint' }}">
                             {{ $entry['rank'] }}
                         </span>
-                        <span class="grid size-7 shrink-0 place-items-center rounded-full border-[1.5px] border-ink bg-paper-dim text-[0.6rem] font-extrabold">
+
+                        {{-- Avatar berbingkai: bingkai mengikuti gelar. --}}
+                        <span class="relative grid size-7 shrink-0 place-items-center rounded-full bg-paper-dim text-[0.6rem] font-extrabold {{ $frameClass }}">
                             {{ mb_strtoupper(mb_substr($leader->name, 0, 1)) }}
+                            @if ($entry['rank'] === 1)
+                                <span class="absolute -right-1.5 -top-1.5 grid size-3.5 place-items-center rounded-full border-[1.5px] border-ink bg-gold text-[0.4rem] font-extrabold" aria-hidden="true">1</span>
+                            @endif
                         </span>
+
                         <span class="min-w-0 flex-1">
-                            <span class="block truncate font-display text-[0.76rem] font-bold leading-tight">
-                                {{ $leader->name }}
+                            <span class="flex items-center gap-1">
+                                <span class="truncate font-display text-[0.76rem] font-bold leading-tight">
+                                    {{ $leader->name }}
+                                </span>
                                 @if ($entry['is_me'])
-                                    <span class="stamp ml-1 bg-amber text-[0.5rem]">Anda</span>
+                                    <span class="stamp shrink-0 bg-gold text-[0.5rem]">Anda</span>
                                 @endif
                             </span>
-                            <span class="block truncate text-[0.6rem] font-semibold text-ink-faint">
-                                {{ $leader->group_name ?: 'Tanpa kelompok' }} · Lv {{ $leader->level }}
+
+                            <span class="mt-0.5 flex min-w-0 flex-wrap items-center gap-1">
+                                {{-- Label gelar "Digital Flexing". --}}
+                                <span
+                                    class="shrink-0 rounded-[2px] border-[1.5px] border-ink px-1 py-px text-[0.5rem] font-extrabold uppercase tracking-[0.05em]
+                                        {{ $flex['frame'] === 'ember' ? 'bg-vermilion text-white' : '' }}
+                                        {{ $flex['frame'] === 'legend' ? 'bg-brand text-white' : '' }}
+                                        {{ $flex['frame'] === 'gold' ? 'bg-gold text-ink' : '' }}
+                                        {{ in_array($flex['frame'], ['silver', 'plain'], true) ? 'bg-paper-dim text-ink-soft' : '' }}"
+                                    title="Gelar diperoleh dari total XP dan peringkat"
+                                >
+                                    {{ $flex['label'] }}
+                                </span>
+                                <span class="truncate text-[0.6rem] font-semibold text-ink-faint">
+                                    {{ $leader->group_name ?: 'Tanpa kelompok' }} · Lv {{ $leader->level }}
+                                </span>
                             </span>
                         </span>
                         <span class="numeric shrink-0 text-[0.72rem] font-bold">{{ number_format($leader->xp, 0, ',', '.') }}</span>
@@ -95,7 +129,7 @@
                     <ol class="mt-2.5 flex flex-col gap-1.5">
                         @foreach ($groups as $group)
                             @php $isMine = $group['group'] === $user->group_name; @endphp
-                            <li class="rounded-sm border-[1.5px] p-2 {{ $isMine ? 'border-ink bg-amber/40' : 'border-ink/40' }}">
+                            <li class="rounded-sm border-[1.5px] p-2 {{ $isMine ? 'border-ink bg-gold/40' : 'border-ink/40' }}">
                                 <div class="flex items-baseline justify-between gap-2">
                                     <span class="min-w-0 truncate font-display text-[0.74rem] font-bold">
                                         {{ $group['rank'] }}. {{ $group['group'] }}
@@ -111,7 +145,7 @@
             </section>
 
             {{-- Posisi saya --}}
-            <section class="rounded-lg border-2 border-ink bg-teal/15 p-4 shadow-[var(--shadow-flat)]">
+            <section class="rounded-lg border-2 border-ink bg-brand/15 p-4 shadow-[var(--shadow-flat)]">
                 <p class="text-[0.56rem] font-extrabold uppercase tracking-[0.13em] text-ink/70">Posisi Anda</p>
                 <p class="numeric mt-1 text-[2rem] font-extrabold leading-none">#{{ $myRank }}</p>
                 <p class="mt-1 text-[0.7rem] font-semibold leading-relaxed text-ink-soft">
