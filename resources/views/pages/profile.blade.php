@@ -26,7 +26,7 @@
                 <x-icon :name="$tab['icon']" class="size-3.5" :stroke="2" />
                 {{ $tab['label'] }}
                 @if ($tab['key'] === 'helpdesk' && $pendingTickets > 0)
-                    <span class="grid size-4 place-items-center rounded-full border border-ink bg-amber text-[0.52rem] font-extrabold text-ink">
+                    <span class="grid size-4 place-items-center rounded-full border border-ink bg-gold text-[0.52rem] font-extrabold text-ink">
                         {{ $pendingTickets }}
                     </span>
                 @endif
@@ -41,13 +41,13 @@
             <section class="flex flex-col gap-3">
                 <div class="rounded-lg border-2 border-ink bg-paper p-4 shadow-[var(--shadow-flat)]">
                     <div class="flex items-center gap-3">
-                        <span class="grid size-14 shrink-0 place-items-center rounded-full border-2 border-ink bg-sky font-display text-[1.3rem] font-extrabold">
+                        <span class="grid size-14 shrink-0 place-items-center rounded-full border-2 border-ink bg-brand-soft font-display text-[1.3rem] font-extrabold">
                             {{ mb_strtoupper(mb_substr($user->name, 0, 1)) }}
                         </span>
                         <div class="min-w-0">
                             <p class="truncate font-display text-[0.95rem] font-extrabold leading-tight">{{ $user->name }}</p>
                             <p class="font-mono text-[0.68rem] font-bold text-ink-faint">{{ $user->nim }}</p>
-                            <span class="stamp mt-1 bg-teal text-white">
+                            <span class="stamp bg-brand text-white mt-1">
                                 <x-icon name="check-circle" class="size-2.5" :stroke="2.6" />
                                 Mahasiswa Aktif
                             </span>
@@ -82,7 +82,7 @@
                     </div>
                 </div>
 
-                <div class="rounded-lg border-2 border-ink bg-teal/15 p-3.5 shadow-[var(--shadow-flat-sm)]">
+                <div class="rounded-lg border-2 border-ink bg-brand/15 p-3.5 shadow-[var(--shadow-flat-sm)]">
                     <p class="text-[0.56rem] font-extrabold uppercase tracking-[0.13em] text-ink/70">Rekap orientasi</p>
                     <div class="mt-1.5 flex items-end justify-between gap-2">
                         <p class="font-display text-[1.5rem] font-extrabold leading-none">
@@ -218,7 +218,7 @@
                                 name="{{ $pref['name'] }}"
                                 value="1"
                                 @checked($pref['value'])
-                                class="mt-1 size-4 shrink-0 rounded-xs border-2 border-ink accent-teal"
+                                class="mt-1 size-4 shrink-0 rounded-xs border-2 border-ink accent-success"
                             >
                         </label>
                     @endforeach
@@ -319,7 +319,7 @@
 
             <div class="flex flex-col gap-4">
                 {{-- Formulir tiket --}}
-                <section class="rounded-lg border-2 border-ink bg-amber/20 p-4 shadow-[var(--shadow-flat)]">
+                <section class="rounded-lg border-2 border-ink bg-gold/20 p-4 shadow-[var(--shadow-flat)]">
                     <x-panel-header title="Kirim tiket" subtitle="Dijawab mentor kelompok, bukan balasan otomatis" icon="ticket" />
 
                     <form method="POST" action="{{ route('help.ticket') }}" class="mt-3 flex flex-col gap-2.5" data-submit-lock>
@@ -394,8 +394,8 @@
                                     <p class="mt-1 text-[0.68rem] font-medium leading-relaxed text-ink-soft">{{ $ticket->message }}</p>
 
                                     @if ($ticket->reply)
-                                        <div class="mt-1.5 rounded-xs border-l-2 border-teal bg-teal/10 p-2">
-                                            <p class="text-[0.54rem] font-extrabold uppercase tracking-[0.1em] text-teal-deep">
+                                        <div class="mt-1.5 rounded-xs border-l-2 border-success bg-success/10 p-2">
+                                            <p class="text-[0.54rem] font-extrabold uppercase tracking-[0.1em] text-brand-deep">
                                                 Balasan {{ $ticket->answeredBy?->name ?? 'mentor' }}
                                             </p>
                                             <p class="mt-0.5 text-[0.68rem] font-medium leading-relaxed text-ink">{{ $ticket->reply }}</p>

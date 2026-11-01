@@ -84,7 +84,7 @@
     </div>
 
     @unless ($status['eligible'])
-        <div class="no-print mx-auto mb-4 w-full max-w-5xl rounded-lg border-2 border-ink bg-amber/25 p-3.5 shadow-[var(--shadow-flat-sm)]">
+        <div class="no-print mx-auto mb-4 w-full max-w-5xl rounded-lg border-2 border-ink bg-gold/25 p-3.5 shadow-[var(--shadow-flat-sm)]">
             <p class="flex items-start gap-2 text-[0.74rem] font-semibold leading-relaxed text-ink-soft">
                 <x-icon name="warning" class="mt-px size-4 shrink-0 text-vermilion-deep" :stroke="2" />
                 <span>
@@ -110,7 +110,7 @@
             {{-- Kepala --}}
             <header class="flex flex-col items-center text-center">
                 <div class="flex items-center gap-2">
-                    <span class="grid size-9 place-items-center rounded-sm border-2 border-ink bg-amber">
+                    <span class="grid size-9 place-items-center rounded-sm border-2 border-ink bg-gold">
                         <x-icon name="compass" class="size-5" :stroke="2" />
                     </span>
                     <div class="text-left">
@@ -155,10 +155,19 @@
                     dengan menyelesaikan {{ $completedQuests }} modul, kuis akademik, dan refleksi yang dipersyaratkan.
                 </p>
 
-                <div class="mt-4 flex flex-wrap items-center justify-center gap-1.5">
-                    <span class="stamp bg-amber/40">Tema: Smart Ecosystems</span>
-                    <span class="stamp bg-paper-dim">Subtema: Smart Education</span>
-                    <span class="stamp bg-teal/20">Peringkat {{ $rank }} / {{ $participants }}</span>
+                {{-- Tema & subtema diambil utuh dari config, bukan dipotong di view.
+                     Sebelumnya di-hardcode "Smart Education" sehingga kalimat
+                     lengkapnya hilang dan tidak sesuai Guidebook. --}}
+                <div class="mt-4 flex flex-col items-center gap-1.5">
+                    <p class="text-[0.6rem] font-semibold leading-relaxed text-ink-soft">
+                        <span class="font-extrabold uppercase tracking-[0.12em] text-ink-faint">Tema:</span>
+                        {{ $program['theme'] }}
+                    </p>
+                    <p class="text-[0.6rem] font-semibold leading-relaxed text-ink-soft">
+                        <span class="font-extrabold uppercase tracking-[0.12em] text-ink-faint">Subtema:</span>
+                        {{ $program['subtheme'] }}
+                    </p>
+                    <span class="stamp mt-0.5 bg-brand/20">Peringkat {{ $rank }} / {{ $participants }}</span>
                 </div>
             </div>
 
@@ -173,7 +182,7 @@
 
                 <div class="flex flex-col items-center">
                     {{-- Segel: geometris, bukan gradient blur --}}
-                    <div class="relative grid size-20 place-items-center rounded-full border-[3px] border-ink bg-amber">
+                    <div class="relative grid size-20 place-items-center rounded-full border-[3px] border-ink bg-gold">
                         <div class="absolute inset-1.5 rounded-full border border-dashed border-ink/60"></div>
                         <div class="text-center">
                             <x-icon name="shield" class="mx-auto size-5" :stroke="2" />

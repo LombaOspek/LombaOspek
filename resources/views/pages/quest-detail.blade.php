@@ -27,14 +27,14 @@
         <div class="flex flex-col gap-4">
 
             <section class="overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-[var(--shadow-flat-lg)]">
-                <div class="h-2 w-full border-b-2 border-ink {{ $isCompleted ? 'bg-teal' : ($isOpen ? 'stripe-amber' : 'bg-paper-dim') }}"></div>
+                <div class="h-2 w-full border-b-2 border-ink {{ $isCompleted ? 'bg-success' : ($isOpen ? 'stripe-gold' : 'bg-paper-dim') }}"></div>
 
                 <div class="p-4 sm:p-5">
                     <div class="flex flex-wrap items-center gap-1.5">
                         <span class="stamp bg-ink text-paper font-mono">{{ $quest->code }}</span>
                         <x-status-pill :status="$status" :reason="$lockedReason" />
                         <span class="stamp bg-paper-dim">{{ $quest->action_type->label() }}</span>
-                        <span class="stamp bg-amber/40">+{{ $quest->xp_reward }} XP</span>
+                        <span class="stamp bg-gold/40">+{{ $quest->xp_reward }} XP</span>
                     </div>
 
                     <h1 class="mt-2.5 font-display text-[1.3rem] font-extrabold leading-tight tracking-tight sm:text-[1.55rem]">
@@ -47,7 +47,7 @@
                     @if ($quest->objective)
                         <div class="mt-3 rounded-sm border-[1.5px] border-dashed border-ink/40 bg-paper-dim p-2.5">
                             <p class="flex items-start gap-2 text-[0.72rem] font-semibold leading-relaxed text-ink-soft">
-                                <x-icon name="target" class="mt-px size-4 shrink-0 text-amber-deep" :stroke="2" />
+                                <x-icon name="target" class="mt-px size-4 shrink-0 text-gold-deep" :stroke="2" />
                                 <span>{{ $quest->objective }}</span>
                             </p>
                         </div>
@@ -73,7 +73,7 @@
                 <div class="border-t-2 border-ink bg-paper-dim p-4 sm:p-5">
                     @if ($isCompleted)
                         <div class="flex flex-wrap items-center gap-2.5">
-                            <span class="grid size-9 place-items-center rounded-full border-2 border-ink bg-teal text-white">
+                            <span class="grid size-9 place-items-center rounded-full border-2 border-ink bg-success text-white">
                                 <x-icon name="check" class="size-5" :stroke="2.6" />
                             </span>
                             <div class="min-w-0">
@@ -127,14 +127,14 @@
                         <div class="flex flex-wrap items-center justify-between gap-2.5">
                             <div class="min-w-0">
                                 <p class="flex items-center gap-1.5 font-display text-[0.82rem] font-bold leading-tight">
-                                    <x-icon name="shield" class="size-4 text-teal-deep" :stroke="2.2" />
+                                    <x-icon name="shield" class="size-4 text-brand-deep" :stroke="2.2" />
                                     Modul ini memerlukan bukti
                                 </p>
                                 <p class="mt-0.5 text-[0.7rem] font-medium leading-relaxed text-ink-soft">
                                     {{ $quest->verification_method->description() }}
                                 </p>
                                 @if ($submission?->status === \App\Enums\SubmissionStatus::Pending)
-                                    <p class="mt-1.5 stamp bg-amber">Menunggu tinjauan LO</p>
+                                    <p class="mt-1.5 stamp bg-gold">Menunggu tinjauan LO</p>
                                 @elseif ($submission?->status === \App\Enums\SubmissionStatus::Rejected)
                                     <p class="mt-1.5 stamp bg-vermilion text-white">Ditolak — unggah ulang</p>
                                 @endif
@@ -179,7 +179,7 @@
                             @endif
 
                             <label class="flex cursor-pointer items-start gap-2 rounded-sm border-[1.5px] border-dashed border-ink/40 bg-paper p-2.5">
-                                <input type="checkbox" name="confirm" value="1" required class="mt-0.5 size-4 rounded-xs border-2 border-ink accent-teal">
+                                <input type="checkbox" name="confirm" value="1" required class="mt-0.5 size-4 rounded-xs border-2 border-ink accent-success">
                                 <span class="text-[0.7rem] font-semibold leading-snug text-ink-soft">
                                     Saya menyatakan telah benar-benar mengikuti kegiatan modul ini dan data yang saya berikan sesuai kenyataan.
                                 </span>
@@ -189,7 +189,7 @@
                             @enderror
 
                             <div class="flex flex-wrap items-center gap-2">
-                                <button type="submit" class="btn btn-primary">
+                                <button type="submit" class="btn btn-primary" data-reward-xp="{{ $quest->xp_reward }}">
                                     <x-icon name="check" class="size-4" :stroke="2.6" />
                                     Tandai Selesai (+{{ $quest->xp_reward }} XP)
                                 </button>
@@ -202,6 +202,38 @@
         </div>
 
         <aside class="flex flex-col gap-4">
+            {{-- WIRA menemani: kartu tips dari maskot --}}
+            <section class="relative overflow-hidden rounded-lg border-2 border-ink bg-gold/25 p-4 shadow-[var(--shadow-flat)]">
+                <div class="flex items-start gap-3">
+                    <div class="animate-float w-16 shrink-0 sm:w-20">
+                        <img
+                            src="{{ asset('images/mascot/wira-write.png') }}"
+                            alt="WIRA UMK sedang mencatat panduan modul"
+                            width="80" height="80"
+                            class="h-auto w-full drop-shadow-[3px_4px_0_rgba(23,21,15,0.8)]"
+                            loading="lazy"
+                        >
+                    </div>
+                    <div class="min-w-0">
+                        <p class="flex items-center gap-1.5 text-[0.56rem] font-extrabold uppercase tracking-[0.13em] text-gold-deep">
+                            <x-icon name="sparkle" class="size-3" :stroke="2.2" />
+                            Tips dari WIRA
+                        </p>
+                        <p class="mt-1 text-[0.7rem] font-semibold leading-relaxed text-ink-soft">
+                            @if ($isQuiz)
+                                Kerjakan kuis dalam satu tarikan napas — timer berjalan di server. Skor 80% untuk lulus.
+                            @elseif ($quest->requiresVerification())
+                                Pastikan bukti Anda jelas: NIM dan nama harus terbaca. Bukti kabur akan ditolak LO.
+                            @elseif ($isCompleted)
+                                Selesai! Buka modul berikutnya dan jaga rentetan harian Anda tetap menyala.
+                            @else
+                                Baca instruksi sampai habis, lalu kerjakan. Refleksi minimal 80 karakter agar tercatat bermakna.
+                            @endif
+                        </p>
+                    </div>
+                </div>
+            </section>
+
             <section class="rounded-lg border-2 border-ink bg-paper p-4 shadow-[var(--shadow-flat)]">
                 <x-panel-header title="Posisi Anda" icon="trending" />
                 <dl class="mt-2.5 flex flex-col gap-1.5 text-[0.72rem]">
@@ -224,7 +256,7 @@
                 </dl>
             </section>
 
-            <section class="rounded-lg border-2 border-ink bg-teal/15 p-4 shadow-[var(--shadow-flat)]">
+            <section class="rounded-lg border-2 border-ink bg-brand/15 p-4 shadow-[var(--shadow-flat)]">
                 <p class="flex items-center gap-1.5 text-[0.58rem] font-extrabold uppercase tracking-[0.13em] text-ink/70">
                     <x-icon name="help" class="size-3.5" :stroke="2.2" />
                     Butuh bantuan?
@@ -242,7 +274,39 @@
 </div>
 
 {{-- Modal verifikasi anti-curang, hanya untuk modul yang mewajibkan bukti --}}
-@if ($isOpen && $quest->requiresVerification())
-    <x-verify-modal :quest="$quest" :user-quest="$userQuest" :submission="$submission ?? null" />
-@endif
+    @if ($isOpen && $quest->requiresVerification())
+        <x-verify-modal :quest="$quest" :user-quest="$userQuest" :submission="$submission ?? null" />
+    @endif
 @endsection
+
+@push('scripts')
+<script type="module">
+    // Rayakan penyelesaian modul: konfeti + nada "complete", lalu XP melayang
+    // ke bilah XP di sidebar. Semua dipicu oleh flash session dari server,
+    // bukan ditebak klien.
+    const flash = document.querySelector('[data-flash-tone]');
+    const isSuccess = flash?.dataset.flashTone === 'success';
+
+    if (isSuccess) {
+        const xpEl = document.querySelector('[data-reward-xp]');
+        const xpAmount = Number(xpEl?.dataset.rewardXp || 0);
+
+        window.Ospek?.burstConfetti(window.innerWidth / 2, window.innerHeight * 0.38);
+        window.Ospek?.playTone('complete');
+        window.Ospek?.xpBurst(xpAmount, xpEl);
+
+        // Level naik? Tampilkan overlay setelah burst selesai.
+        const levelUp = window.Ospek?.detectLevelUp?.();
+
+        if (levelUp) {
+            window.setTimeout(() => window.Ospek.levelUp(levelUp), 900);
+        }
+    }
+
+    // Animasi masuk untuk kartu tips WIRA & panel samping.
+    document.querySelectorAll('aside > section').forEach((el, i) => {
+        el.classList.add('animate-rise');
+        el.style.animationDelay = `${i * 90}ms`;
+    });
+</script>
+@endpush

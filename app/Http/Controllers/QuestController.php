@@ -30,6 +30,7 @@ class QuestController extends Controller
         $user = $request->user();
 
         $board = $this->progression->questBoard($user);
+        $chapters = $this->progression->chapters($user);
 
         $activeRow = $board->first(fn (array $row): bool => $row['status'] === QuestStatus::InProgress)
             ?? $board->first(fn (array $row): bool => $row['status'] === QuestStatus::Available);
@@ -46,6 +47,16 @@ class QuestController extends Controller
                 'total' => $board->count(),
             ],
             'orientationDay' => $this->progression->orientationDay(),
+            'totalDays' => $this->progression->totalOrientationDays(),
+            'effectiveDay' => $this->progression->effectiveDay(),
+            'chapters' => $chapters,
+            // Babak tempat modul aktif berada: dipakai panel kanan untuk
+            // menampilkan konteks "BAB 2: Eksplorasi Fakultas" di atas hari.
+            'activeChapter' => $activeRow
+                ? $chapters->first(fn (array $chapter): bool => $chapter['rows']->contains(
+                    fn (array $row): bool => $row['quest']->is($activeRow['quest'])
+                ))
+                : null,
         ]);
     }
 

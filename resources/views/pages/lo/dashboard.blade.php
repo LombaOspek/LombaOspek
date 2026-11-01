@@ -7,10 +7,10 @@
 @section('content')
 @php
     $badgeTone = fn (string $c) => match ($c) {
-        'teal' => 'bg-teal/20',
-        'sky' => 'bg-sky/50',
+        'teal' => 'bg-brand/20',
+        'sky' => 'bg-brand-soft/50',
         'vermilion' => 'bg-vermilion/15',
-        default => 'bg-amber/40',
+        default => 'bg-gold/40',
     };
 @endphp
 
@@ -24,7 +24,7 @@
                     <x-icon name="shield" class="size-3" :stroke="2.2" />
                     Portal LO (Kakak Tingkat)
                 </span>
-                <span class="stamp bg-teal text-white">
+                <span class="stamp bg-brand text-white">
                     <span class="size-1.5 rounded-full bg-white"></span>
                     SIAKAD UMK Terhubung
                 </span>
@@ -116,7 +116,7 @@
 
         @if ($submissions->isEmpty())
             <div class="border-t-2 border-ink/10 p-6 text-center">
-                <x-icon name="check-circle" class="mx-auto size-8 text-teal-deep" :stroke="1.8" />
+                <x-icon name="check-circle" class="mx-auto size-8 text-brand-deep" :stroke="1.8" />
                 <p class="mt-2 font-display text-[0.9rem] font-bold">
                     {{ $status === 'pending' ? 'Tidak ada bukti menunggu.' : 'Belum ada data pada filter ini.' }}
                 </p>
@@ -166,7 +166,7 @@
                                         {{ $submission->status->label() }}
                                     </span>
                                     <span class="stamp bg-paper-dim">{{ $submission->method->label() }}</span>
-                                    <span class="stamp bg-amber/40">+{{ $quest?->xp_reward }} XP</span>
+                                    <span class="stamp bg-gold/40">+{{ $quest?->xp_reward }} XP</span>
                                 </div>
 
                                 <p class="mt-1.5 font-display text-[0.86rem] font-bold leading-snug">
@@ -191,7 +191,7 @@
                                 @endif
 
                                 @if ($submission->distance_meters !== null)
-                                    <p class="mt-1 text-[0.64rem] font-semibold text-teal-deep">
+                                    <p class="mt-1 text-[0.64rem] font-semibold text-brand-deep">
                                         Jarak terukur: {{ number_format($submission->distance_meters, 0, ',', '.') }} m
                                     </p>
                                 @endif
@@ -269,7 +269,7 @@
     </section>
 
     {{-- Catatan integritas --}}
-    <section class="rounded-lg border-2 border-ink bg-teal/15 p-4 shadow-[var(--shadow-flat)]">
+    <section class="rounded-lg border-2 border-ink bg-brand/15 p-4 shadow-[var(--shadow-flat)]">
         <div class="flex items-start gap-2.5">
             <span class="grid size-8 shrink-0 place-items-center rounded-sm border-[1.5px] border-ink bg-paper">
                 <x-icon name="shield" class="size-4" :stroke="2" />

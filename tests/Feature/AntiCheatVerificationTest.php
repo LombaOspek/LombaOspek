@@ -178,7 +178,18 @@ class AntiCheatVerificationTest extends TestCase
             ->assertOk()
             ->assertJson(['success' => true]);
 
-        $this->assertSame($before + $quest->xp_reward, $student->refresh()->xp);
+        // XP modul harus masuk persis sebesar hadiahnya. Nilai total bisa
+        // melebihi itu karena lencana bisa terbuka pada aksi yang sama, jadi
+        // yang diperiksa adalah transaksi XP modul ini, bukan selisih total.
+        $this->assertDatabaseHas('xp_transactions', [
+            'user_id' => $student->id,
+            'source_type' => 'quest',
+            'source_id' => $quest->id,
+            'amount' => $quest->xp_reward,
+        ]);
+
+        $this->assertGreaterThanOrEqual($before + $quest->xp_reward, $student->refresh()->xp);
+
         $this->assertDatabaseHas('quest_submissions', [
             'user_id' => $student->id,
             'quest_id' => $quest->id,

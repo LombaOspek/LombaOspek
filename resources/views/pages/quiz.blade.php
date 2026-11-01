@@ -30,7 +30,7 @@
                 {{ $remainingAttempts }} dari {{ $maxAttempts }} percobaan tersisa
             </span>
             @if ($bestAttempt)
-                <span class="stamp bg-teal text-white">
+                <span class="stamp bg-success text-white">
                     <x-icon name="star" class="size-3" :stroke="2.2" />
                     Terbaik {{ $bestAttempt->score }}/{{ $bestAttempt->total_questions }}
                 </span>
@@ -40,9 +40,9 @@
 
     @if ($hasPassed)
         {{-- Sudah lulus: tampilkan hasil, jangan biarkan mengulang demi XP. --}}
-        <section class="rounded-lg border-2 border-ink bg-teal/15 p-5 shadow-[var(--shadow-flat)]">
+        <section class="rounded-lg border-2 border-ink bg-brand/15 p-5 shadow-[var(--shadow-flat)]">
             <div class="flex items-start gap-3">
-                <span class="grid size-11 shrink-0 place-items-center rounded-full border-2 border-ink bg-teal text-white">
+                <span class="grid size-11 shrink-0 place-items-center rounded-full border-2 border-ink bg-success text-white">
                     <x-icon name="check" class="size-6" :stroke="2.6" />
                 </span>
                 <div class="min-w-0">
@@ -65,15 +65,15 @@
                 <x-panel-header title="Pembahasan jawaban" subtitle="Tinjau kembali konsep yang diuji" icon="book" />
                 <ol class="mt-3 flex flex-col gap-2.5">
                     @foreach ($bestAttempt->answers as $number => $row)
-                        <li class="rounded-sm border-[1.5px] border-ink/40 p-2.5 {{ ($row['is_correct'] ?? false) ? 'bg-teal/10' : 'bg-vermilion/5' }}">
+                        <li class="rounded-sm border-[1.5px] border-ink/40 p-2.5 {{ ($row['is_correct'] ?? false) ? 'bg-success/10' : 'bg-vermilion/5' }}">
                             <div class="flex items-start gap-2">
-                                <span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border-[1.5px] border-ink text-[0.58rem] font-bold {{ ($row['is_correct'] ?? false) ? 'bg-teal text-white' : 'bg-vermilion text-white' }}">
+                                <span class="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border-[1.5px] border-ink text-[0.58rem] font-bold {{ ($row['is_correct'] ?? false) ? 'bg-success text-white' : 'bg-vermilion text-white' }}">
                                     {{ $number }}
                                 </span>
                                 <div class="min-w-0">
                                     <p class="text-[0.74rem] font-bold leading-snug">{{ $row['question'] ?? '' }}</p>
                                     <p class="mt-1 text-[0.68rem] font-semibold text-ink-faint">
-                                        Jawaban Anda: <strong class="{{ ($row['is_correct'] ?? false) ? 'text-teal-deep' : 'text-vermilion-deep' }}">{{ $row['user_answer'] ?? '—' }}</strong>
+                                        Jawaban Anda: <strong class="{{ ($row['is_correct'] ?? false) ? 'text-success-deep' : 'text-vermilion-deep' }}">{{ $row['user_answer'] ?? '—' }}</strong>
                                         · Kunci: <strong class="text-ink">{{ $row['correct_answer'] ?? '—' }}</strong>
                                     </p>
                                     @if (! empty($row['explanation']))
@@ -101,7 +101,7 @@
         <section id="quiz-intro" class="rounded-lg border-2 border-ink bg-paper p-5 shadow-[var(--shadow-flat-lg)]">
             <div class="grid gap-4 sm:grid-cols-[1.4fr_1fr]">
                 <div>
-                    <span class="stamp bg-amber">
+                    <span class="stamp bg-gold">
                         <x-icon name="warning" class="size-3" :stroke="2.2" />
                         Baca sebelum mulai
                     </span>
@@ -150,7 +150,7 @@
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <span class="stamp bg-amber" id="quiz-timer" role="timer" aria-live="off">
+                    <span class="stamp bg-gold" id="quiz-timer" role="timer" aria-live="off">
                         <x-icon name="clock" class="size-3" :stroke="2.2" />
                         <span id="timer-text">--:--</span>
                     </span>
@@ -171,7 +171,7 @@
                             <p class="font-display text-[0.92rem] font-bold leading-snug text-pretty">
                                 {{ $question->question }}
                             </p>
-                            <span class="stamp shrink-0 bg-amber/40">+{{ $question->xp_reward }} XP</span>
+                            <span class="stamp shrink-0 bg-gold/40">+{{ $question->xp_reward }} XP</span>
                         </div>
 
                         <div class="mt-3 flex flex-col gap-1.5" role="radiogroup" aria-label="Pilihan jawaban soal {{ $question->question_number }}">
@@ -219,7 +219,7 @@
         <section id="quiz-result" class="hidden flex-col gap-3">
             <div class="rounded-lg border-2 border-ink bg-paper p-5 shadow-[var(--shadow-flat-lg)]">
                 <div class="flex items-start gap-3">
-                    <span id="result-badge" class="grid size-11 shrink-0 place-items-center rounded-full border-2 border-ink bg-amber">
+                    <span id="result-badge" class="grid size-11 shrink-0 place-items-center rounded-full border-2 border-ink bg-gold">
                         <x-icon name="trophy" class="size-6" :stroke="2" />
                     </span>
                     <div class="min-w-0">
@@ -464,7 +464,7 @@
             if (data.is_passed) {
                 title.textContent = data.percentage === 100 ? 'Sempurna — semua jawaban benar.' : 'Lulus. Modul selesai.';
                 desc.textContent = `Anda memperoleh ${data.xp_earned} XP. ${data.remaining_attempts} percobaan tidak terpakai karena kuis sudah lulus.`;
-                badge.className = 'grid size-11 shrink-0 place-items-center rounded-full border-2 border-ink bg-teal text-white';
+                badge.className = 'grid size-11 shrink-0 place-items-center rounded-full border-2 border-ink bg-success text-white';
                 window.Ospek?.playTone('reward');
             } else {
                 title.textContent = 'Belum mencapai nilai lulus.';
@@ -484,7 +484,7 @@
 
             Object.entries(data.evaluations ?? {}).forEach(([number, row]) => {
                 const item = document.createElement('li');
-                item.className = `rounded-sm border-[1.5px] border-ink/40 p-2.5 ${row.is_correct ? 'bg-teal/10' : 'bg-vermilion/5'}`;
+                item.className = `rounded-sm border-[1.5px] border-ink/40 p-2.5 ${row.is_correct ? 'bg-success/10' : 'bg-vermilion/5'}`;
 
                 const head = document.createElement('p');
                 head.className = 'text-[0.72rem] font-bold leading-snug';

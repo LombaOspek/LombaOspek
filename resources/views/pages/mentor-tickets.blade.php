@@ -16,7 +16,7 @@
                 Tiket masuk tanpa balasan otomatis. Jawaban Anda langsung terlihat di halaman Pusat Bantuan mahasiswa.
             </p>
         </div>
-        <span class="stamp bg-amber">
+        <span class="stamp bg-gold">
             <x-icon name="ticket" class="size-3" :stroke="2.2" />
             {{ $openCount }} terbuka
         </span>
@@ -24,7 +24,7 @@
 
     @if ($tickets->isEmpty())
         <section class="rounded-lg border-2 border-dashed border-ink/40 bg-paper p-6 text-center">
-            <x-icon name="check-circle" class="mx-auto size-8 text-teal-deep" :stroke="1.8" />
+            <x-icon name="check-circle" class="mx-auto size-8 text-brand-deep" :stroke="1.8" />
             <p class="mt-2 font-display text-[0.9rem] font-bold">Tidak ada tiket masuk.</p>
             <p class="mt-0.5 text-[0.72rem] font-medium text-ink-faint">Semua pertanyaan mahasiswa sudah terjawab.</p>
         </section>
@@ -53,8 +53,8 @@
                         <p class="text-[0.76rem] font-medium leading-relaxed text-ink-soft">{{ $ticket->message }}</p>
 
                         @if ($ticket->reply)
-                            <div class="mt-2.5 rounded-sm border-l-2 border-teal bg-teal/10 p-2.5">
-                                <p class="text-[0.56rem] font-extrabold uppercase tracking-[0.1em] text-teal-deep">
+                            <div class="mt-2.5 rounded-sm border-l-2 border-success bg-success/10 p-2.5">
+                                <p class="text-[0.56rem] font-extrabold uppercase tracking-[0.1em] text-brand-deep">
                                     Balasan {{ $ticket->answeredBy?->name ?? 'mentor' }}
                                     @if ($ticket->answered_at)
                                         · {{ $ticket->answered_at->diffForHumans() }}

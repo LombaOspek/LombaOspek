@@ -28,7 +28,7 @@
     <div class="w-full max-w-lg overflow-hidden rounded-xl border-2 border-ink bg-paper shadow-[var(--shadow-flat-xl)]">
 
         {{-- Kepala --}}
-        <div class="flex items-start justify-between gap-2 border-b-2 border-ink bg-amber/25 px-4 py-3">
+        <div class="flex items-start justify-between gap-2 border-b-2 border-ink bg-gold/25 px-4 py-3">
             <div class="flex items-start gap-2.5">
                 <span class="grid size-9 shrink-0 place-items-center rounded-sm border-2 border-ink bg-paper">
                     <x-icon :name="$method->icon()" class="size-5" :stroke="2" />
@@ -55,7 +55,7 @@
 
             @if ($isPending)
                 {{-- Sudah mengunggah, menunggu LO --}}
-                <div class="rounded-sm border-2 border-amber bg-amber/20 p-3">
+                <div class="rounded-sm border-2 border-gold bg-gold/20 p-3">
                     <p class="flex items-center gap-1.5 font-display text-[0.8rem] font-bold">
                         <x-icon name="clock" class="size-4" :stroke="2.2" />
                         Menunggu tinjauan LO
@@ -175,7 +175,7 @@
                             name="proof"
                             accept="image/png,image/jpeg,image/webp"
                             required
-                            class="w-full rounded-sm border-2 border-ink bg-white px-2 py-1.5 text-[0.72rem] font-medium file:mr-2 file:rounded-xs file:border-0 file:bg-amber file:px-2 file:py-1 file:font-bold focus:outline-none"
+                            class="w-full rounded-sm border-2 border-ink bg-white px-2 py-1.5 text-[0.72rem] font-medium file:mr-2 file:rounded-xs file:border-0 file:bg-gold file:px-2 file:py-1 file:font-bold focus:outline-none"
                         >
                         <p class="text-[0.6rem] font-medium text-ink-faint">JPG/PNG/WebP, maksimal 5 MB.</p>
 
@@ -202,13 +202,13 @@
             @endif
 
             {{-- Hasil sukses --}}
-            <div id="verify-success" class="hidden flex-col items-center gap-2 rounded-sm border-2 border-teal bg-teal/15 p-4 text-center">
-                <span class="grid size-12 place-items-center rounded-full border-2 border-ink bg-teal text-white">
+            <div id="verify-success" class="hidden flex-col items-center gap-2 rounded-sm border-2 border-success bg-success/15 p-4 text-center">
+                <span class="grid size-12 place-items-center rounded-full border-2 border-ink bg-success text-white">
                     <x-icon name="check" class="size-6" :stroke="2.8" />
                 </span>
                 <p class="font-display text-[0.95rem] font-extrabold">Verifikasi berhasil</p>
                 <p id="verify-success-desc" class="text-[0.72rem] font-medium leading-relaxed text-ink-soft"></p>
-                <p id="verify-xp" class="stamp bg-amber text-[0.7rem]">+0 XP</p>
+                <p id="verify-xp" class="stamp bg-gold text-[0.7rem]">+0 XP</p>
                 <a href="{{ route('quests.index') }}" class="btn btn-primary btn-sm mt-1">Lanjut ke Peta Misi</a>
             </div>
         </div>

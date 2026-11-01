@@ -156,7 +156,9 @@ class QuestProgressionTest extends TestCase
     {
         $student = $this->student();
 
-        foreach (Quest::query()->ordered()->get() as $quest) {
+        // Side Quest sengaja tidak termasuk: sertifikat bergantung pada 13
+        // modul utama, bukan pada misi sosial opsional.
+        foreach (Quest::query()->mainline()->ordered()->get() as $quest) {
             $this->completeQuestProperly($student, $quest);
         }
 

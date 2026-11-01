@@ -6,8 +6,8 @@
 
 @php
     $map = [
-        'completed' => ['label' => 'Selesai', 'icon' => 'check-circle', 'class' => 'bg-teal text-white'],
-        'in_progress' => ['label' => 'Berjalan', 'icon' => 'play', 'class' => 'bg-amber text-ink'],
+        'completed' => ['label' => 'Selesai', 'icon' => 'check-circle', 'class' => 'bg-success text-white'],
+        'in_progress' => ['label' => 'Berjalan', 'icon' => 'play', 'class' => 'bg-gold text-ink'],
         'available' => ['label' => 'Siap', 'icon' => 'sparkle', 'class' => 'bg-paper text-ink'],
         'locked' => ['label' => 'Terkunci', 'icon' => 'lock', 'class' => 'bg-paper-dim text-ink-faint'],
     ];

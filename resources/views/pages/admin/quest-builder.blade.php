@@ -150,7 +150,7 @@
                         <label class="flex cursor-pointer items-center gap-2 rounded-sm border-[1.5px] border-ink/40 bg-paper-dim px-2 py-1.5">
                             <input type="radio" name="target_scope" value="{{ $scope }}"
                                 @checked($val('target_scope', 'all') === $scope)
-                                class="size-3.5 border-2 border-ink accent-teal"
+                                class="size-3.5 border-2 border-ink accent-success"
                                 data-scope-radio>
                             <span class="text-[0.72rem] font-semibold">{{ $label }}</span>
                         </label>
@@ -164,7 +164,7 @@
                             <label class="flex cursor-pointer items-center gap-1.5 rounded-xs border-[1.5px] border-ink/40 bg-paper px-1.5 py-1">
                                 <input type="checkbox" name="target_study_programs[]" value="{{ $major }}"
                                     @checked(in_array($major, (array) $val('target_study_programs', []), true))
-                                    class="size-3 border-2 border-ink accent-teal">
+                                    class="size-3 border-2 border-ink accent-success">
                                 <span class="text-[0.66rem] font-semibold">{{ $major }}</span>
                             </label>
                         @endforeach
@@ -192,15 +192,15 @@
             </section>
 
             {{-- 4. Mekanisme verifikasi --}}
-            <section class="rounded-lg border-2 border-ink bg-amber/15 p-4 shadow-[var(--shadow-flat)] sm:p-5">
+            <section class="rounded-lg border-2 border-ink bg-gold/15 p-4 shadow-[var(--shadow-flat)] sm:p-5">
                 <x-panel-header title="Mekanisme Verifikasi" subtitle="Sistem validasi anti-curang" icon="shield" />
 
                 <div class="mt-3 grid gap-2 sm:grid-cols-2">
                     @foreach ($methods as $method)
-                        <label class="flex cursor-pointer items-start gap-2 rounded-sm border-2 border-ink bg-paper p-2.5 transition hover:bg-white has-[:checked]:bg-amber/40 has-[:checked]:shadow-[var(--shadow-flat-sm)]">
+                        <label class="flex cursor-pointer items-start gap-2 rounded-sm border-2 border-ink bg-paper p-2.5 transition hover:bg-white has-[:checked]:bg-gold/40 has-[:checked]:shadow-[var(--shadow-flat-sm)]">
                             <input type="radio" name="verification_method" value="{{ $method->value }}"
                                 @checked($val('verification_method', 'none') === $method->value)
-                                class="mt-0.5 size-3.5 border-2 border-ink accent-teal" data-method-radio>
+                                class="mt-0.5 size-3.5 border-2 border-ink accent-success" data-method-radio>
                             <span class="min-w-0">
                                 <span class="flex items-center gap-1 font-display text-[0.72rem] font-bold">
                                     <x-icon :name="$method->icon()" class="size-3.5" :stroke="2" />
@@ -290,7 +290,7 @@
 
                 <div class="mt-3 rounded-xl border-2 border-ink bg-paper-dim p-3">
                     <div class="flex flex-wrap items-center gap-1.5">
-                        <span class="stamp bg-amber" id="pv-xp">+250 XP</span>
+                        <span class="stamp bg-gold" id="pv-xp">+250 XP</span>
                         <span class="stamp bg-paper" id="pv-category">Eksplorasi</span>
                     </div>
                     <p class="mt-2 font-display text-[0.86rem] font-bold leading-snug" id="pv-title">Nama misi…</p>
@@ -299,11 +299,11 @@
                     </p>
 
                     <div class="mt-2.5 flex items-center gap-1.5 rounded-xs border-[1.5px] border-ink bg-paper px-2 py-1.5">
-                        <x-icon name="shield" class="size-3.5 text-teal-deep" :stroke="2" />
+                        <x-icon name="shield" class="size-3.5 text-brand-deep" :stroke="2" />
                         <span class="text-[0.64rem] font-bold" id="pv-method">Tanpa bukti</span>
                     </div>
 
-                    <div class="mt-2.5 rounded-sm border-2 border-ink bg-amber px-3 py-2 text-center font-display text-[0.74rem] font-bold shadow-[var(--shadow-flat-sm)]">
+                    <div class="mt-2.5 rounded-sm border-2 border-ink bg-gold px-3 py-2 text-center font-display text-[0.74rem] font-bold shadow-[var(--shadow-flat-sm)]">
                         Mulakan Misi Ini →
                     </div>
                 </div>
@@ -327,7 +327,7 @@
                                         {{ $quest->code }} · {{ $quest->verification_method->label() }} · {{ $quest->submissions_count }} bukti
                                     </p>
                                 </div>
-                                <span class="stamp shrink-0 {{ $quest->status === 'draft' ? 'bg-paper-dim text-ink-faint' : 'bg-teal text-white' }} text-[0.5rem]">
+                                <span class="stamp shrink-0 {{ $quest->status === 'draft' ? 'bg-paper-dim text-ink-faint' : 'bg-success text-white' }} text-[0.5rem]">
                                     {{ $quest->status }}
                                 </span>
                             </div>

@@ -57,8 +57,8 @@
             </div>
 
             @if (session('import_skipped'))
-                <div class="mt-2.5 rounded-sm border-[1.5px] border-amber bg-amber/20 p-2.5">
-                    <p class="text-[0.6rem] font-extrabold uppercase tracking-[0.1em] text-amber-deep">Baris dilewati</p>
+                <div class="mt-2.5 rounded-sm border-[1.5px] border-gold bg-gold/20 p-2.5">
+                    <p class="text-[0.6rem] font-extrabold uppercase tracking-[0.1em] text-gold-deep">Baris dilewati</p>
                     <ul class="mt-1 flex flex-col gap-0.5">
                         @foreach (session('import_skipped') as $skip)
                             <li class="text-[0.66rem] font-semibold text-ink-soft">• {{ $skip }}</li>
@@ -80,14 +80,14 @@
                         name="file"
                         accept=".csv,text/csv"
                         required
-                        class="mt-1 w-full rounded-sm border-2 border-ink bg-white px-2 py-1.5 text-[0.72rem] font-medium file:mr-2 file:rounded-xs file:border-0 file:bg-amber file:px-2 file:py-1 file:font-bold focus:outline-none"
+                        class="mt-1 w-full rounded-sm border-2 border-ink bg-white px-2 py-1.5 text-[0.72rem] font-medium file:mr-2 file:rounded-xs file:border-0 file:bg-gold file:px-2 file:py-1 file:font-bold focus:outline-none"
                     >
                     @error('file')<p class="mt-1 text-[0.64rem] font-bold text-vermilion-deep">{{ $message }}</p>@enderror
                     <p class="mt-1 text-[0.62rem] font-medium text-ink-faint">Maksimal 25 MB. Satu NIM duplikat dilewati, bukan menggagalkan seluruh berkas.</p>
                 </div>
 
                 <label class="flex cursor-pointer items-start gap-2 rounded-sm border-[1.5px] border-ink/40 bg-paper-dim p-2">
-                    <input type="checkbox" name="auto_generate_password" value="1" class="mt-0.5 size-3.5 rounded-xs border-2 border-ink accent-teal">
+                    <input type="checkbox" name="auto_generate_password" value="1" class="mt-0.5 size-3.5 rounded-xs border-2 border-ink accent-brand">
                     <span class="text-[0.68rem] font-semibold leading-snug text-ink-soft">
                         Buat kata sandi acak per akun (jika tidak dicentang, sandi awal <code class="font-mono font-bold">password</code>)
                     </span>
@@ -260,7 +260,7 @@
                         <tr class="transition hover:bg-paper-dim/60">
                             <td class="px-3 py-2">
                                 <div class="flex items-center gap-2">
-                                    <span class="grid size-7 shrink-0 place-items-center rounded-full border-[1.5px] border-ink bg-sky text-[0.6rem] font-extrabold">
+                                    <span class="grid size-7 shrink-0 place-items-center rounded-full border-[1.5px] border-ink bg-brand-soft text-[0.6rem] font-extrabold">
                                         {{ mb_strtoupper(mb_substr($user->name, 0, 1)) }}
                                     </span>
                                     <span class="min-w-0">
@@ -285,7 +285,7 @@
                                 <div class="flex items-center justify-end gap-1">
                                     <button
                                         type="button"
-                                        class="grid size-6 place-items-center rounded-xs border-[1.5px] border-ink bg-paper transition hover:bg-sky"
+                                        class="grid size-6 place-items-center rounded-xs border-[1.5px] border-ink bg-paper transition hover:bg-brand-soft"
                                         data-role-toggle="role-{{ $user->id }}"
                                         aria-label="Ubah peran {{ $user->name }}"
                                         title="Ubah peran & gugus"

@@ -136,15 +136,15 @@ class QuestBuilderTest extends TestCase
         $this->actingAs($this->admin())
             ->post('/admin/misi', $this->payload([
                 'action_type' => QuestActionType::Quiz->value,
-                'step_number' => 9,
+                'step_number' => 14,
             ]))
             ->assertRedirect();
 
-        $quest = Quest::query()->where('step_number', 9)->firstOrFail();
+        $quest = Quest::query()->where('step_number', 14)->firstOrFail();
 
-        // Harus konsisten dengan kode modul lain: MOD-09, bukan MOD-9.
-        $this->assertSame('MOD-09', $quest->code);
-        $this->assertSame('MOD-09', $quest->quiz_module_code);
+        // Harus konsisten dengan kode modul lain: MOD-14, bukan MOD-14 tanpa pad.
+        $this->assertSame('MOD-14', $quest->code);
+        $this->assertSame('MOD-14', $quest->quiz_module_code);
     }
 
     public function test_duplicate_step_number_is_rejected_instead_of_colliding(): void

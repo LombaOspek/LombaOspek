@@ -1,0 +1,845 @@
+/* ------------------------------------------------------------------
+   Peta Misi: lintasan vertikal berliku (winding path) bergaya game
+   ----------------------------------------------------------------
+   Deretan node bulat 3D tersusun berliku dari atas ke bawah. Tidak ada
+   kartu besar yang memenuhi layar - hanya node, satu bubble yang muncul
+   saat node diklik, dan maskot WIRA sebagai hiasan di sela lintasan.
+
+   Identitas neo-brutalist dipertahankan: border tebal 2px warna ink dan
+   bayangan SOLID tanpa blur. Efek 3D dibuat dari bayangan solid yang
+   lebih gelap di bawah node, bukan gradient atau blur.
+
+   Posisi node memakai --dx (dari server, pola sinus) sehingga lintasan
+   membentuk huruf S. Garis penghubungnya digambar JS melalui pusat tiap
+   node dengan kurva bezier, jadi selalu menempel apa pun lebarnya.
+   ------------------------------------------------------------------ */
+
+.quest-rail {
+    position: relative;
+    /* Ruang untuk node yang bergeser ke kiri/kanan lintasan. Vertikal
+       dibiarkan terlihat agar kurva tidak terpotong di ujung. */
+    overflow-x: clip;
+    padding-block: 1.5rem 3rem;
+}
+
+.quest-step,
+.quest-list {
+    overflow: visible;
+}
+
+/* Lintasan memakai ruang vertikal yang lapang. Jarak antar-node dinaikkan
+   signifikan supaya lengkungan S punya ruang untuk mengalir, bukan
+   berdesakan. */
+.quest-list {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1.6rem, 3.4vw, 3rem);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* Satu langkah lintasan. Tinggi tetap supaya irama jarak antar-node
+   konsisten, tidak bergantung panjang judul misi.
+
+   `--dx-amp` adalah amplitudo geseran horizontal. Dinaikkan bertahap per
+   breakpoint: makin lebar layar, makin lebar lekukan S yang bisa
+   ditampilkan tanpa memotong label di sisinya. */
+.quest-step {
+    --wave: 0;
+    --dx-amp: 1.6rem;
+    --dx: calc(var(--wave) * var(--dx-amp));
+
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 8.5rem;
+    /* Animasi rise pada <li> membuat stacking context per langkah, sehingga
+       z-index bubble hanya berlaku di dalam <li>-nya sendiri: node langkah
+       berikutnya (yang datang belakangan di DOM) menimpa bubble. Karena itu
+       z-index dinaikkan di tingkat <li>, bukan hanya di dalamnya. */
+    z-index: 1;
+}
+
+/* Langkah yang bubble-nya terbuka naik ke atas langkah lain, supaya bubble
+   selalu utuh dan tidak tertimpa node tetangga. */
+.quest-step:has(.quest-bubble:not([hidden])) {
+    z-index: 40;
+}
+
+@media (min-width: 640px) {
+    .quest-step {
+        --dx-amp: 4rem;
+        min-height: 9.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .quest-step {
+        --dx-amp: 5.5rem;
+        min-height: 10.5rem;
+    }
+}
+
+@media (min-width: 1280px) {
+    .quest-step {
+        --dx-amp: 6.5rem;
+    }
+}
+
+/* ------------------------------------------------------------------
+   Garis lintasan
+   ----------------------------------------------------------------
+   Di belakang node (z 1). Kurva digambar melalui pusat tiap node,
+   jadi bentuk likunya mengikuti geseran node.
+   ------------------------------------------------------------------ */
+.quest-path-line {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    display: block;
+}
+
+.quest-path-line path {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Rel yang belum ditempuh: tebal, solid, samar. */
+.quest-path-base {
+    stroke: color-mix(in srgb, var(--color-ink) 13%, transparent);
+    stroke-width: 12;
+}
+
+/* Bagian yang sudah ditempuh: biru brand, menimpa rel. */
+.quest-path-fill {
+    stroke: var(--color-brand);
+    stroke-width: 12;
+    transition: clip-path 700ms cubic-bezier(0.22, 0.9, 0.28, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quest-path-fill {
+        transition: none;
+    }
+}
+
+/* ------------------------------------------------------------------
+   Node: tombol bulat 3D
+   ----------------------------------------------------------------
+   Tiga status visual:
+     selesai : biru brand + centang putih
+     terkunci: abu redup + gembok
+     aktif   : kuning WIRA + memantul sebagai penunjuk arah
+   ------------------------------------------------------------------ */
+.quest-node {
+    position: relative;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    width: 4.5rem;
+    height: 4.5rem;
+    border: 2px solid var(--color-ink);
+    border-radius: 999px;
+    font-display: inherit;
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
+    transform: translateX(var(--dx, 0px));
+    transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+}
+
+@media (min-width: 640px) {
+    .quest-node {
+        width: 5rem;
+        height: 5rem;
+        font-size: 1.3rem;
+    }
+}
+
+/* Bevel 3D: bayangan solid gelap di bawah + kilau tipis di dalam atas. */
+.quest-node--done {
+    background: var(--color-brand);
+    color: #fff;
+    box-shadow:
+        inset 0 4px 0 rgb(255 255 255 / 0.3),
+        0 6px 0 0 var(--color-brand-deep);
+}
+
+.quest-node--locked {
+    background: var(--color-paper-dim);
+    color: color-mix(in srgb, var(--color-ink) 42%, transparent);
+    box-shadow:
+        inset 0 4px 0 rgb(255 255 255 / 0.55),
+        0 6px 0 0 color-mix(in srgb, var(--color-ink) 22%, transparent);
+    cursor: not-allowed;
+    filter: saturate(0.35);
+}
+
+.quest-node--active {
+    background: var(--color-gold);
+    color: var(--color-ink);
+    box-shadow:
+        inset 0 4px 0 rgb(255 255 255 / 0.45),
+        0 7px 0 0 var(--color-gold-deep),
+        0 7px 0 3px color-mix(in srgb, var(--color-gold) 30%, transparent);
+    animation: node-bounce 1900ms cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
+}
+
+/* Node aktif yang sedang dibuka bubble-nya: berhenti memantul, tegaskan fokus. */
+.quest-node--active[aria-expanded="true"] {
+    animation: none;
+    outline: 3px solid var(--color-ink);
+    outline-offset: 4px;
+}
+
+/* Ditekan: turun 3px, bayangan menyusut - terasa seperti tombol fisik. */
+.quest-node:active:not(.quest-node--locked) {
+    transform: translateX(var(--dx, 0px)) translateY(3px);
+    box-shadow:
+        inset 0 4px 0 rgb(255 255 255 / 0.3),
+        0 3px 0 0 var(--color-brand-deep);
+}
+
+.quest-node--active:active { box-shadow:
+        inset 0 4px 0 rgb(255 255 255 / 0.45),
+        0 3px 0 0 var(--color-gold-deep); }
+
+.quest-node:focus-visible {
+    outline: 3px solid var(--color-ink);
+    outline-offset: 4px;
+}
+
+@keyframes node-bounce {
+    0%, 100% { transform: translateX(var(--dx, 0px)) translateY(0); }
+    50% { transform: translateX(var(--dx, 0px)) translateY(-7px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quest-node--active { animation: none; }
+}
+
+/* Gambar WIRA di dalam node aktif mengisi lingkaran. */
+.quest-node img {
+    width: 100%;
+    height: 100%;
+    border-radius: 999px;
+    object-fit: contain;
+    padding: 0.15rem;
+    pointer-events: none;
+}
+
+/* ------------------------------------------------------------------
+   Bubble percakapan
+   ----------------------------------------------------------------
+   Muncul tepat di bawah node yang diklik. Karena bubble dipusatkan
+   pada posisi node (bukan pada pusat baris), ekor panahnya selalu
+   menunjuk lurus ke node tersebut.
+   ------------------------------------------------------------------ */
+.quest-bubble {
+    position: absolute;
+    z-index: 30;
+    top: calc(50% + 3.6rem);
+    left: 50%;
+    width: min(19.5rem, calc(100vw - 3.5rem));
+    transform: translateX(calc(-50% + var(--dx, 0px)));
+    padding: 0.85rem 0.9rem 0.9rem;
+    border: 2px solid var(--color-ink);
+    border-radius: 0.7rem;
+    background: var(--color-paper);
+    box-shadow: var(--shadow-flat);
+    text-align: left;
+}
+
+.quest-bubble[hidden] {
+    display: none;
+}
+
+/* Ekor panah: kotak diputar 45deg dengan dua sisi ber-border. */
+.quest-bubble::before {
+    content: '';
+    position: absolute;
+    top: -9px;
+    left: 50%;
+    width: 15px;
+    height: 15px;
+    background: var(--color-paper);
+    border-top: 2px solid var(--color-ink);
+    border-left: 2px solid var(--color-ink);
+    transform: translateX(-50%) rotate(45deg);
+}
+
+.quest-bubble-title {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.quest-bubble-text {
+    margin-top: 0.3rem;
+    font-size: 0.72rem;
+    font-weight: 500;
+    line-height: 1.55;
+    color: var(--color-ink-soft);
+}
+
+/* Tombol CTA di dalam bubble: biru brand, bayangan solid. */
+.quest-bubble-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    margin-top: 0.7rem;
+    padding: 0.55rem 0.8rem;
+    border: 2px solid var(--color-ink);
+    border-radius: 0.45rem;
+    background: var(--color-brand);
+    box-shadow: 0 4px 0 0 var(--color-brand-deep);
+    color: #fff;
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.quest-bubble-cta:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 0 0 var(--color-brand-deep);
+}
+
+.quest-bubble-cta:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 0 var(--color-brand-deep);
+}
+
+.quest-bubble-cta--done {
+    background: var(--color-success);
+    box-shadow: 0 4px 0 0 color-mix(in srgb, var(--color-success) 60%, #000);
+}
+
+.quest-bubble-dismiss {
+    width: 100%;
+    margin-top: 0.4rem;
+    padding: 0.45rem;
+    border: 2px solid transparent;
+    border-radius: 0.45rem;
+    background: transparent;
+    color: var(--color-ink-faint);
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.quest-bubble-dismiss:hover {
+    border-color: color-mix(in srgb, var(--color-ink) 25%, transparent);
+    color: var(--color-ink);
+}
+
+/* Catatan verifikasi: XP baru masuk setelah bukti diverifikasi LO. */
+.quest-bubble-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.3rem;
+    margin-top: 0.45rem;
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--color-ink-faint);
+}
+
+/* ------------------------------------------------------------------
+   Maskot dekoratif di sela lintasan
+   ----------------------------------------------------------------
+   Diletakkan di sisi kosong (di luar rentang geseran node) supaya
+   tidak pernah menimpa node atau bubble.
+   ------------------------------------------------------------------ */
+.quest-mascot {
+    position: absolute;
+    /* Di bawah node (z 3) tapi di atas garis lintasan (z 1): maskot tidak
+       pernah menutupi angka/ikon node yang bisa diklik. */
+    z-index: 2;
+    /* Tampil di SEMUA ukuran layar. Di ponsel ruang bebas di kiri/kanan
+       lekukan masih ~135px, cukup untuk maskot 5rem tanpa memakan node. */
+    display: block;
+    width: 5rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    transition: transform 160ms ease;
+}
+
+/* Slot maskot: tiap maskot punya jangkar sendiri di ruang kosong sisi
+   lintasan. Nilai left/right memakai % dari kotak pembungkus (yang sudah
+   dibatasi oleh kolom grid), sehingga tidak pernah menyundul tepi layar. */
+.quest-mascot-zone {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.quest-mascot-zone .quest-mascot {
+    pointer-events: auto;
+}
+
+/* Posisi maskot DIISI JS (syncMascots) lewat custom property, bukan
+   dipatok persen di CSS: jumlah node bisa berapa saja, dan slot yang
+   jatuh di belakang panel babak digeser ke celah antarbabak. Nilai di
+   bawah hanya jaring pengaman bila JS gagal jalan. */
+.quest-mascot--left {
+    inset-inline-start: var(--mascot-left, 0.25rem);
+    top: var(--mascot-top, 25%);
+}
+
+.quest-mascot--right {
+    inset-inline-end: var(--mascot-right, 0.25rem);
+    top: var(--mascot-top, 50%);
+}
+
+/* Maskot ikut memudar saat satu babak belum terbuka: tidak hilang (tetap
+   jadi penanda tujuan), tapi tidak menarik perhatian lebih dari node. */
+.quest-mascot[data-future="1"] img {
+    opacity: 0.75;
+    filter: drop-shadow(3px 4px 0 rgb(23 21 15 / 0.18)) saturate(0.75);
+}
+
+.quest-mascot img {
+    width: 100%;
+    height: auto;
+    filter: drop-shadow(3px 4px 0 rgb(23 21 15 / 0.22));
+}
+
+.quest-mascot:hover,
+.quest-mascot:focus-visible {
+    transform: translateY(-3px) rotate(-2deg);
+}
+
+/* ------------------------------------------------------------------
+   Pop-up maskot: muncul saat kursor berhenti di atas maskot.
+   a) Tooltip teks: sapaan singkat di atas maskot (murni CSS, instan,
+      berfungsi juga saat keyboard fokus).
+   b) Kartu misi: bubble informasi berisi CTA, dibuka oleh JS setelah
+      jeda singkat supaya tidak berkedip saat kursor cuma melintas.
+   ------------------------------------------------------------------ */
+
+/* (a) Tooltip sapaan */
+.quest-mascot::before {
+    content: attr(data-mascot-line);
+    position: absolute;
+    bottom: calc(100% + 0.35rem);
+    left: 50%;
+    width: max-content;
+    max-width: 12rem;
+    padding: 0.35rem 0.5rem;
+    border: 2px solid var(--color-ink);
+    border-radius: 0.4rem;
+    background: var(--color-ink);
+    box-shadow: var(--shadow-flat-sm);
+    color: var(--color-paper);
+    font-family: var(--font-sans);
+    font-size: 0.63rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: left;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, 4px);
+    transition: opacity 140ms ease, transform 140ms ease, visibility 140ms;
+}
+
+.quest-mascot:hover::before,
+.quest-mascot:focus-visible::before {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quest-mascot::before {
+        transition: none;
+    }
+}
+
+/* ------------------------------------------------------------------
+   Mobile: tooltip TAP, bukan hover
+   ----------------------------------------------------------------
+   Di layar sentuh tidak ada hover yang andal, dan tooltip berlebar
+   max-content berisiko menyundul tepi viewport. Jadi di ponsel:
+   - tooltip hover dimatikan total
+   - tooltip hanya muncul saat maskot di-tap (.is-open, di-set JS)
+   - lebarnya dibatasi relatif viewport, bukan max-content
+   ------------------------------------------------------------------ */
+@media (max-width: 767px) {
+    .quest-mascot::before {
+        display: none;
+    }
+
+    /*
+     * Tooltip di ponsel TIDAK boleh dipusatkan pada maskot: maskot duduk
+     * hanya ~20px dari tepi, jadi tooltip 176px yang dipusatkan akan
+     * terpotong ~28px di luar layar. Karena itu tooltip dijangkarkan ke
+     * sisi layar (kiri untuk maskot kiri, kanan untuk maskot kanan) dan
+     * lebarnya dipatok relatif viewport.
+     */
+    .quest-mascot.is-open::before {
+        display: block;
+        opacity: 1;
+        visibility: visible;
+        width: calc(100vw - 2.5rem);
+        max-width: calc(100vw - 2.5rem);
+        white-space: normal;
+        transform: translateY(0);
+    }
+
+    .quest-mascot--left.is-open::before {
+        left: -0.25rem;
+        right: auto;
+        margin-left: 0;
+    }
+
+    .quest-mascot--right.is-open::before {
+        left: auto;
+        right: -0.25rem;
+    }
+
+    /* Panah kecil di bawah tooltip supaya jelas menempel ke maskot. */
+    .quest-mascot.is-open::after {
+        content: "";
+        position: absolute;
+        bottom: calc(100% - 1px);
+        left: 50%;
+        width: 10px;
+        height: 10px;
+        background: var(--color-ink);
+        transform: translateX(-50%) rotate(45deg);
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
+/* (b) Kartu misi saat hover: pembungkus membentang diskrit melewati bubble
+   (ukuran 0 bila tersembunyi) supaya pointer-events bisa diarahkan tanpa
+   memicu flicker. */
+.quest-bubble-wrap {
+    display: none;
+}
+
+.quest-bubble-wrap[data-open="1"] {
+    display: block;
+}
+
+@media (min-width: 768px) {
+    .quest-mascot {
+        width: 6rem;
+    }
+
+    /* Jangan set start DAN end sekaligus pada satu elemen: pada posisi
+       absolute keduanya membuat elemen teregang dan slot kanan pindah
+       ke kiri. */
+    .quest-mascot--left {
+        inset-inline-start: var(--mascot-left, 1rem);
+    }
+
+    .quest-mascot--right {
+        inset-inline-end: var(--mascot-right, 1rem);
+    }
+}
+
+@media (min-width: 1024px) {
+    .quest-mascot {
+        width: 5.5rem;
+    }
+}
+
+@media (min-width: 1280px) {
+    .quest-mascot {
+        width: 6.5rem;
+    }
+
+    .quest-mascot--left {
+        inset-inline-start: var(--mascot-left, 2rem);
+    }
+
+    .quest-mascot--right {
+        inset-inline-end: var(--mascot-right, 2rem);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quest-mascot {
+        transition: none;
+    }
+
+    .quest-mascot:hover {
+        transform: none;
+    }
+}
+
+/* ------------------------------------------------------------------
+   LABEL MENGAMBANG DI SISI BERLAWANAN LENGKUNGAN
+   ----------------------------------------------------------------
+   Setiap node punya label kecil berisi judul misi + hari, diletakkan
+   di sisi yang berlawanan arah geseran node. Dengan begitu label selalu
+   jatuh ke ruang kosong, tidak pernah menimpa kurva, dan peta tidak
+   terasa kosong tanpa perlu kartu besar.
+
+   Sisi ditentukan dari tanda --wave (server): wave negatif = node
+   bergeser ke kiri, jadi label ke kanan, dan sebaliknya. Node di tengah
+   (wave 0) memakai sisi kanan sebagai default.
+   ------------------------------------------------------------------ */
+.quest-node-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: none;
+    flex-direction: column;
+    gap: 0.1rem;
+    width: max-content;
+    max-width: 11rem;
+    pointer-events: none;
+    line-height: 1.3;
+}
+
+/* Sisi kanan: label digeser ke kanan sejauh geseran node + radius + jarak. */
+.quest-step[data-side="right"] .quest-node-label {
+    align-items: flex-start;
+    text-align: left;
+    transform: translateY(-50%) translateX(calc(var(--dx, 0px) + 3.6rem));
+}
+
+/* Sisi kiri: geser ke kiri sejauh lebar label sendiri, supaya tepi
+   kanannya tetap berjarak dari tepi kiri node. */
+.quest-step[data-side="left"] .quest-node-label {
+    align-items: flex-end;
+    text-align: right;
+    transform: translateY(-50%) translateX(calc(var(--dx, 0px) - 3.6rem - 100%));
+}
+
+.quest-node-label-title {
+    font-family: var(--font-display);
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--color-ink);
+}
+
+.quest-node-label-meta {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
+}
+
+/* Label node terkunci ikut meredup. */
+.quest-step[data-status="locked"] .quest-node-label-title {
+    color: color-mix(in srgb, var(--color-ink) 45%, transparent);
+}
+
+/* Saat bubble terbuka, label yang sama disembunyikan agar tidak bertumpuk. */
+.quest-step:has(.quest-bubble:not([hidden])) .quest-node-label {
+    opacity: 0;
+}
+
+@media (min-width: 1024px) {
+    .quest-node-label {
+        display: flex;
+        max-width: 13rem;
+    }
+
+    .quest-node-label-title {
+        font-size: 0.78rem;
+    }
+}
+
+/* ------------------------------------------------------------------
+   PALANG GERBANG BABAK TEMATIK
+   ----------------------------------------------------------------
+   Satu palang menaungi 3-5 node dalam rentang hari (mis. Hari 3-5),
+   bukan satu node per hari. Dibuat sebagai panel berbingkai tebal
+   dengan bayangan solid supaya terasa seperti papan penanda di peta
+   petualangan, bukan sekadar garis pemisah.
+   ------------------------------------------------------------------ */
+/* Palang babak duduk di atas garis lintasan (z 1) supaya kurva yang
+   menyambung akhir babak ke babak berikutnya mengalir rapi DI BELAKANG
+   panel, bukan memotong teksnya. Panelnya sendiri punya latar solid +
+   border tebal, jadi Neo-Brutalism tetap utuh. */
+.quest-chapter-item {
+    position: relative;
+    z-index: 12;
+    margin-block: 2.25rem 1.25rem;
+}
+
+.quest-chapter-item:first-child {
+    margin-block-start: 0.25rem;
+}
+
+.quest-chapter-gate {
+    /* Panel dipusatkan dan diberi lebar maksimum: di layar lebar ia jadi
+       papan penanda yang mengambang di tengah lintasan, sehingga kurva
+       masih terlihat mengalir di kiri-kanannya. */
+    padding-inline: 0.25rem;
+    margin-inline: auto;
+    max-width: 34rem;
+}
+
+.quest-chapter-panel {
+    position: relative;
+    border: 2px solid var(--color-ink);
+    border-radius: var(--radius-md, 0.5rem);
+    background: var(--color-paper);
+    box-shadow: var(--shadow-flat-sm);
+    padding: 0.7rem 0.85rem 0.75rem;
+}
+
+/* Pita penanda di tepi kiri panel: pembeda babak berjalan. */
+.quest-chapter-panel::before {
+    content: "";
+    position: absolute;
+    inset-block: 2px;
+    inset-inline-start: 2px;
+    width: 4px;
+    border-radius: 2px;
+    background: var(--color-ink);
+    opacity: 0.12;
+}
+
+.quest-chapter-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.6rem;
+}
+
+.quest-chapter-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.55rem;
+    border: 2px solid var(--color-ink);
+    border-radius: 999px;
+    background: var(--color-paper);
+    font-family: var(--font-display);
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.quest-chapter-days {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--color-ink-faint);
+    text-transform: uppercase;
+}
+
+.quest-chapter-narrative {
+    margin-block-start: 0.4rem;
+    font-size: 0.7rem;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--color-ink-soft);
+    max-width: 46ch;
+}
+
+.quest-chapter-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-block-start: 0.5rem;
+}
+
+.quest-chapter-bar {
+    flex: 1;
+    height: 0.4rem;
+    border: 1.5px solid var(--color-ink);
+    border-radius: 999px;
+    background: var(--color-paper-dim);
+    overflow: hidden;
+}
+
+.quest-chapter-bar-fill {
+    display: block;
+    height: 100%;
+    background: var(--color-gold);
+    transition: width 500ms ease-out;
+}
+
+.quest-chapter-count {
+    flex-shrink: 0;
+    font-size: 0.6rem;
+    font-weight: 800;
+    color: var(--color-ink-faint);
+}
+
+/* --- Babak berjalan: ditonjolkan --- */
+.quest-chapter-gate--current .quest-chapter-panel {
+    background: color-mix(in srgb, var(--color-gold) 22%, var(--color-paper));
+    box-shadow: var(--shadow-flat);
+}
+
+.quest-chapter-gate--current .quest-chapter-badge {
+    background: var(--color-gold);
+}
+
+.quest-chapter-gate--current .quest-chapter-panel::before {
+    background: var(--color-gold-deep, var(--color-gold));
+    opacity: 1;
+}
+
+/* --- Babak mendatang: redup, tanpa bayangan --- */
+.quest-chapter-gate--locked .quest-chapter-panel {
+    background: var(--color-paper-dim);
+    box-shadow: none;
+    border-color: color-mix(in srgb, var(--color-ink) 45%, transparent);
+}
+
+.quest-chapter-gate--locked .quest-chapter-badge {
+    background: var(--color-paper-dim);
+    color: color-mix(in srgb, var(--color-ink) 55%, transparent);
+}
+
+.quest-chapter-gate--locked .quest-chapter-narrative,
+.quest-chapter-gate--locked .quest-chapter-days {
+    opacity: 0.65;
+}
+
+/* ------------------------------------------------------------------
+   Node terkunci total (babak mendatang):
+   abu-abu redup, TANPA BAYANGAN, ikon gembok.
+   ------------------------------------------------------------------ */
+.quest-node--locked-future {
+    background: var(--color-paper-dim);
+    color: color-mix(in srgb, var(--color-ink) 35%, transparent);
+    border-color: color-mix(in srgb, var(--color-ink) 45%, transparent);
+    box-shadow: none !important;
+    cursor: not-allowed;
+    filter: saturate(0.2) opacity(0.7);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quest-chapter-bar-fill {
+        transition: none;
+    }
+}

@@ -21,11 +21,17 @@ class Badge
      * @var array<string, array{fill: string, ring: string}>
      */
     private const TONES = [
-        'teal' => ['fill' => '#d3e9e5', 'ring' => '#217a6f'],
-        'amber' => ['fill' => '#f9e5b4', 'ring' => '#8a5c00'],
-        'sky' => ['fill' => '#d9ebf1', 'ring' => '#3d7a8c'],
+        // Dipetakan ke palet WIRA UMK: biru #2758a3 & kuning #f7bc29.
+        'brand' => ['fill' => '#c8d6ec', 'ring' => '#1c3f75'],
+        'gold' => ['fill' => '#fbe6b4', 'ring' => '#8a5c00'],
+        'success' => ['fill' => '#cfe4d8', 'ring' => '#14653f'],
         'vermilion' => ['fill' => '#f7ddd3', 'ring' => '#99300f'],
         'ink' => ['fill' => '#e7e3d7', 'ring' => '#17150f'],
+        // Alias lama dipertahankan supaya data `badge_color` yang ada
+        // (teal/amber/sky) tidak pecah.
+        'teal' => ['fill' => '#c8d6ec', 'ring' => '#1c3f75'],
+        'amber' => ['fill' => '#fbe6b4', 'ring' => '#8a5c00'],
+        'sky' => ['fill' => '#dbe4f3', 'ring' => '#1c3f75'],
     ];
 
     /**
@@ -50,7 +56,7 @@ class Badge
         string $class = 'size-12',
         ?string $label = null,
     ): string {
-        $palette = self::TONES[$tone] ?? self::TONES['teal'];
+        $palette = self::TONES[$tone] ?? self::TONES['brand'];
 
         $fill = $unlocked ? $palette['fill'] : '#eeeade';
         $ring = $unlocked ? '#17150f' : 'rgba(23, 21, 15, 0.38)';

@@ -20,7 +20,7 @@
 
         <header class="flex items-center justify-between gap-3">
             <span class="flex items-center gap-2.5">
-                <span class="grid size-9 place-items-center rounded-sm border-2 border-ink bg-amber">
+                <span class="grid size-9 place-items-center rounded-sm border-2 border-ink bg-gold">
                     <x-icon name="shield" class="size-5" :stroke="2" />
                 </span>
                 <span>
@@ -64,7 +64,7 @@
             @if ($code !== null)
                 @if ($isValid && $subject)
                     <section class="overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-[var(--shadow-flat-lg)]">
-                        <div class="flex items-center gap-2.5 border-b-2 border-ink bg-teal px-4 py-3 text-white">
+                        <div class="flex items-center gap-2.5 border-b-2 border-ink bg-brand px-4 py-3 text-white">
                             <span class="grid size-8 place-items-center rounded-full border-2 border-white/70">
                                 <x-icon name="check" class="size-4" :stroke="3" />
                             </span>
@@ -122,7 +122,7 @@
             @else
                 <section class="rounded-lg border-2 border-dashed border-ink/40 bg-paper p-4">
                     <p class="flex items-start gap-2 text-[0.72rem] font-medium leading-relaxed text-ink-soft">
-                        <x-icon name="info" class="mt-px size-4 shrink-0 text-teal-deep" :stroke="2" />
+                        <x-icon name="info" class="mt-px size-4 shrink-0 text-brand-deep" :stroke="2" />
                         <span>Masukkan kode sertifikat untuk memeriksa keabsahan. Sistem akan menampilkan nama, NIM, dan jumlah modul yang diselesaikan.</span>
                     </p>
                 </section>

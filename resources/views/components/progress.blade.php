@@ -1,16 +1,17 @@
 @props([
     'value' => 0,
-    'tone' => 'teal',
+    'tone' => 'brand',
     'height' => 'h-2.5',
     'label' => null,
 ])
 
 @php
     $toneClass = match ($tone) {
-        'amber' => 'bg-amber',
+        'gold', 'amber' => 'bg-gold',
+        'success' => 'bg-success',
         'vermilion' => 'bg-vermilion',
         'ink' => 'bg-ink',
-        default => 'bg-teal',
+        default => 'bg-brand',
     };
     $width = max(0, min(100, (int) $value));
 @endphp

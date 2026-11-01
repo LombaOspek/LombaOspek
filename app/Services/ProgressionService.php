@@ -74,7 +74,10 @@ class ProgressionService
      */
     public function questBoard(User $user): Collection
     {
-        $quests = Quest::query()->published()->ordered()->get()
+        // mainline() wajib: Side Quest tidak boleh masuk rantai prasyarat.
+        // Kalau ikut, satu misi opsional yang belum selesai akan mengunci
+        // seluruh modul sesudahnya karena `previousCompleted` jadi false.
+        $quests = Quest::query()->published()->mainline()->ordered()->get()
             ->filter(fn (Quest $quest): bool => $quest->targetsStudent($user))
             ->values();
 
@@ -111,6 +114,145 @@ class ProgressionService
                 'locked_reason' => $lockedReason,
             ];
         });
+    }
+
+    /**
+     * Kelompokkan papan misi menjadi babak tematik.
+     *
+     * Rentang hari tiap babak berasal dari config `ospek.chapters`, sehingga
+     * satu palang pembatas menaungi 3-5 node, bukan satu node per hari. Modul
+     * yang `unlock_day`-nya tidak tercakup babak mana pun tetap ditampilkan
+     * lewat babak cadangan supaya tidak ada node yang hilang dari peta.
+     *
+     * @return Collection<int, array{key: string, title: string, label: string, tagline: string, narrative: string, icon: string, day_from: int, day_to: int, days: string, rows: Collection, completed: int, total: int, is_current: bool, is_future: bool, is_done: bool}>
+     */
+    public function chapters(User $user): Collection
+    {
+        $board = $this->questBoard($user);
+        $today = $this->effectiveDay();
+
+        /** @var array<int, array<string, mixed>> $definitions */
+        $definitions = config('ospek.chapters', []);
+
+        $chapters = collect($definitions)->values()->map(function (array $definition, int $index) use ($board, $today): array {
+            $from = (int) $definition['from'];
+            $to = (int) $definition['to'];
+
+            $rows = $board
+                ->filter(fn (array $row): bool => (int) $row['quest']->unlock_day >= $from
+                    && (int) $row['quest']->unlock_day <= $to)
+                ->values();
+
+            return $this->makeChapter($definition, $index, $rows, $today, $from, $to);
+        });
+
+        // Jaring pengaman: modul di luar rentang config tetap tampil.
+        $orphans = $board->reject(function (array $row) use ($definitions): bool {
+            $day = (int) $row['quest']->unlock_day;
+
+            return collect($definitions)->contains(fn (array $d): bool => $day >= (int) $d['from'] && $day <= (int) $d['to']);
+        });
+
+        if ($orphans->isNotEmpty()) {
+            $first = (int) $orphans->min(fn (array $row): int => (int) $row['quest']->unlock_day);
+            $last = (int) $orphans->max(fn (array $row): int => (int) $row['quest']->unlock_day);
+
+            $chapters->push($this->makeChapter([
+                'key' => 'lainnya',
+                'title' => 'Babak Tambahan',
+                'tagline' => 'Modul di luar jadwal utama',
+                'narrative' => 'Modul yang ditambahkan panitia di luar rentang babak tematik.',
+                'icon' => 'flag',
+            ], $chapters->count(), $orphans->values(), $today, $first, $last));
+        }
+
+        return $chapters->values();
+    }
+
+    /**
+     * Rakit satu babak tematik dari definisi config dan baris papan misi.
+     *
+     * @param  array<string, mixed>  $definition
+     * @param  Collection<int, array{quest: Quest, status: QuestStatus, user_quest: ?UserQuest, locked_reason: ?string}>  $rows
+     * @return array{key: string, title: string, label: string, tagline: string, narrative: string, icon: string, day_from: int, day_to: int, days: string, rows: Collection, completed: int, total: int, is_current: bool, is_future: bool, is_done: bool}
+     */
+    private function makeChapter(array $definition, int $index, Collection $rows, int $today, int $from, int $to): array
+    {
+        $completed = $rows->filter(fn (array $row): bool => $row['status'] === QuestStatus::Completed)->count();
+        $total = $rows->count();
+
+        $days = $from === $to ? 'Hari '.$from : 'Hari '.$from.'-'.$to;
+
+        // Babak berjalan = babak yang rentang harinya memuat hari efektif.
+        $isCurrent = $today >= $from && $today <= $to;
+
+        return [
+            'key' => (string) ($definition['key'] ?? 'babak-'.($index + 1)),
+            'title' => (string) $definition['title'],
+            'label' => 'BAB '.($index + 1).': '.$definition['title'],
+            'tagline' => (string) ($definition['tagline'] ?? ''),
+            'narrative' => (string) ($definition['narrative'] ?? ''),
+            'icon' => (string) ($definition['icon'] ?? 'flag'),
+            'day_from' => $from,
+            'day_to' => $to,
+            'days' => $days,
+            'rows' => $rows,
+            'completed' => $completed,
+            'total' => $total,
+            'is_current' => $isCurrent,
+            'is_future' => $from > $today,
+            'is_done' => $total > 0 && $completed === $total,
+        ];
+    }
+
+    /**
+     * Modul yang jatuh pada hari orientasi berjalan — bahan widget
+     * "Fokus Hari Ini". Bila hari ini tidak punya modul (misal acara sudah
+     * lewat), dipakai modul terbuka terdekat agar widget tidak kosong.
+     *
+     * @return array{rows: Collection, completed: int, total: int, percentage: int, day: int}
+     */
+    public function todayFocus(User $user): array
+    {
+        $board = $this->questBoard($user);
+        $day = $this->effectiveDay();
+
+        $rows = $board
+            ->filter(fn (array $row): bool => (int) $row['quest']->unlock_day === $day)
+            ->values();
+
+        if ($rows->isEmpty()) {
+            $rows = $board
+                ->filter(fn (array $row): bool => $row['status'] !== QuestStatus::Locked)
+                ->take(1)
+                ->values();
+        }
+
+        $total = $rows->count();
+        $completed = $rows->filter(fn (array $row): bool => $row['status'] === QuestStatus::Completed)->count();
+
+        return [
+            'rows' => $rows,
+            'completed' => $completed,
+            'total' => $total,
+            'percentage' => $total > 0 ? (int) round(($completed / $total) * 100) : 0,
+            'day' => $day,
+        ];
+    }
+
+    /**
+     * Modul terdekat yang belum selesai (maksimal $limit), untuk widget
+     * "Misi Selanjutnya". Urut sesuai langkah, jadi yang teratas adalah
+     * yang paling mendesak.
+     *
+     * @return Collection<int, array{quest: Quest, status: QuestStatus, user_quest: ?UserQuest, locked_reason: ?string}>
+     */
+    public function nextUp(User $user, int $limit = 3): Collection
+    {
+        return $this->questBoard($user)
+            ->reject(fn (array $row): bool => $row['status'] === QuestStatus::Completed)
+            ->take($limit)
+            ->values();
     }
 
     public function activeQuest(User $user): ?Quest
@@ -186,14 +328,21 @@ class ProgressionService
         return $quest->action_type === QuestActionType::Quiz ? 0 : $quest->xp_reward;
     }
 
+    /**
+     * Hanya modul utama. Side Quest opsional, jadi menyelesaikannya tidak
+     * boleh menggeser persentase penyelesaian maupun memicu sertifikat.
+     */
     public function completedCount(User $user): int
     {
-        return $user->userQuests()->where('status', QuestStatus::Completed)->count();
+        return $user->userQuests()
+            ->where('status', QuestStatus::Completed)
+            ->whereHas('quest', fn ($query) => $query->mainline())
+            ->count();
     }
 
     public function completionPercentage(User $user, ?int $total = null): int
     {
-        $total ??= Quest::query()->count();
+        $total ??= Quest::query()->mainline()->count();
 
         if ($total === 0) {
             return 0;
@@ -204,7 +353,9 @@ class ProgressionService
 
     private function syncCompletionFlag(User $user): void
     {
-        $total = Quest::query()->count();
+        // Total memakai mainline() supaya Side Quest yang belum dikerjakan
+        // tidak menahan sertifikat selamanya.
+        $total = Quest::query()->mainline()->count();
 
         if ($total > 0 && $this->completedCount($user) >= $total && $user->orientation_completed_at === null) {
             $user->forceFill(['orientation_completed_at' => now()])->save();

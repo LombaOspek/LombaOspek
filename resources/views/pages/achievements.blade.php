@@ -45,7 +45,7 @@
     <section class="overflow-hidden rounded-lg border-2 border-ink bg-paper shadow-[var(--shadow-flat-lg)]">
         <div class="grid gap-0 sm:grid-cols-[1fr_auto]">
             <div class="p-4 sm:p-5">
-                <span class="stamp {{ $certificate['eligible'] ? 'bg-teal text-white' : 'bg-paper-dim' }}">
+                <span class="stamp {{ $certificate['eligible'] ? 'bg-success text-white' : 'bg-paper-dim' }}">
                     <x-icon :name="$certificate['eligible'] ? 'check-circle' : 'lock'" class="size-3" :stroke="2.2" />
                     {{ $certificate['eligible'] ? 'Siap diunduh' : 'Belum memenuhi syarat' }}
                 </span>
@@ -86,7 +86,7 @@
             </div>
 
             {{-- Tiket sobek dekoratif --}}
-            <div class="hidden w-24 flex-col items-center justify-center border-l-2 border-dashed border-ink/40 bg-amber/25 p-3 sm:flex">
+            <div class="hidden w-24 flex-col items-center justify-center border-l-2 border-dashed border-ink/40 bg-gold/25 p-3 sm:flex">
                 <span class="grid size-12 place-items-center rounded-full border-2 border-ink bg-paper">
                     <x-icon name="medal" class="size-6" :stroke="1.9" />
                 </span>
@@ -126,7 +126,7 @@
                             <div class="flex items-start justify-between gap-1.5">
                                 <h3 class="font-display text-[0.84rem] font-bold leading-tight">{{ $ach->title }}</h3>
                                 @if ($unlocked)
-                                    <span class="grid size-5 shrink-0 place-items-center rounded-full border-[1.5px] border-ink bg-teal text-white">
+                                    <span class="grid size-5 shrink-0 place-items-center rounded-full border-[1.5px] border-ink bg-success text-white">
                                         <x-icon name="check" class="size-3" :stroke="3" />
                                     </span>
                                 @else
@@ -152,7 +152,7 @@
                         </div>
                         <x-progress :value="$row['percentage']" tone="{{ $unlocked ? 'teal' : 'amber' }}" height="h-1.5" class="mt-1.5" />
                         <div class="mt-1.5 flex items-center justify-between gap-2">
-                            <span class="stamp bg-amber/40 text-[0.54rem]">+{{ $ach->xp_reward }} XP</span>
+                            <span class="stamp bg-gold/40 text-[0.54rem]">+{{ $ach->xp_reward }} XP</span>
                             <span class="text-[0.58rem] font-bold text-ink-faint">
                                 @if ($unlocked)
                                     Terbuka {{ $row['unlocked_at']?->translatedFormat('d M Y') }}

@@ -22,7 +22,7 @@
         {{-- Bar identitas --}}
         <header class="flex items-center justify-between gap-3">
             <a href="{{ route('login') }}" class="flex items-center gap-2.5">
-                <span class="grid size-10 place-items-center rounded-md border-2 border-ink bg-amber shadow-[var(--shadow-flat-sm)]">
+                <span class="grid size-10 place-items-center rounded-md border-2 border-ink bg-gold shadow-[var(--shadow-flat-sm)]">
                     <x-icon name="compass" class="size-6" :stroke="2" />
                 </span>
                 <span>
@@ -34,7 +34,7 @@
             </a>
 
             <span class="stamp hidden bg-paper sm:inline-flex">
-                <span class="size-1.5 rounded-full bg-teal"></span>
+                <span class="size-1.5 rounded-full bg-brand"></span>
                 Sesi {{ $program['academic_year'] }}
             </span>
         </header>
@@ -44,15 +44,33 @@
             {{-- Panel kiri: konteks & bukti --}}
             <section class="flex flex-col gap-3">
                 <div class="rounded-xl border-2 border-ink bg-paper p-5 shadow-[var(--shadow-flat-lg)] sm:p-6">
-                    <span class="stamp bg-teal text-white">
-                        <x-icon name="sparkle" class="size-3" :stroke="2.2" />
-                        Orientasi Berbasis Gamifikasi
-                    </span>
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <span class="stamp bg-brand text-white">
+                                <x-icon name="sparkle" class="size-3" :stroke="2.2" />
+                                Orientasi Berbasis Gamifikasi
+                            </span>
 
-                    <h1 class="mt-3 font-display text-[1.6rem] font-extrabold leading-[1.12] tracking-tight text-balance sm:text-[2rem]">
-                        Delapan modul, satu perjalanan,<br class="hidden sm:block">
-                        sertifikat resmi di akhir.
-                    </h1>
+                            <h1 class="mt-3 font-display text-[1.6rem] font-extrabold leading-[1.12] tracking-tight text-balance sm:text-[2rem]">
+                                Delapan modul, satu perjalanan,<br class="hidden sm:block">
+                                sertifikat resmi di akhir.
+                            </h1>
+                        </div>
+
+                        {{-- WIRA menyambut di halaman masuk --}}
+                        <div class="animate-float relative hidden shrink-0 sm:block">
+                            <img
+                                src="{{ asset('images/mascot/wira-welcome.png') }}"
+                                alt="Maskot WIRA Universitas Muria Kudus"
+                                width="132" height="132"
+                                class="h-auto w-32 drop-shadow-[4px_6px_0_rgba(23,21,15,0.85)]"
+                                loading="eager"
+                            >
+                            <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md border-2 border-ink bg-gold px-2 py-0.5 text-[0.55rem] font-extrabold uppercase tracking-[0.08em] shadow-[var(--shadow-flat-sm)]">
+                                Ayo mulai!
+                            </span>
+                        </div>
+                    </div>
 
                     <p class="mt-2.5 max-w-lg text-[0.8rem] font-medium leading-relaxed text-ink-soft text-pretty">
                         {{ $program['name'] }} memandu mahasiswa baru {{ $program['study_program'] }}
@@ -70,21 +88,21 @@
 
                 {{-- Tiga bukti nilai, bukan angka dekoratif --}}
                 <div class="grid gap-2.5 sm:grid-cols-3">
-                    <div class="rounded-lg border-2 border-ink bg-teal/15 p-3 shadow-[var(--shadow-flat-sm)]">
-                        <x-icon name="map" class="size-5 text-teal-deep" :stroke="2" />
+                    <div class="rounded-lg border-2 border-ink bg-brand/15 p-3 shadow-[var(--shadow-flat-sm)]">
+                        <x-icon name="map" class="size-5 text-brand-deep" :stroke="2" />
                         <p class="mt-1.5 font-display text-[0.76rem] font-bold leading-tight">Gerbang waktu</p>
                         <p class="mt-0.5 text-[0.66rem] font-medium leading-snug text-ink-soft">
                             Modul terbuka berurutan, tidak bisa dilompati.
                         </p>
                     </div>
-                    <div class="rounded-lg border-2 border-ink bg-amber/25 p-3 shadow-[var(--shadow-flat-sm)]">
-                        <x-icon name="quiz" class="size-5 text-amber-deep" :stroke="2" />
+                    <div class="rounded-lg border-2 border-ink bg-gold/25 p-3 shadow-[var(--shadow-flat-sm)]">
+                        <x-icon name="quiz" class="size-5 text-gold-deep" :stroke="2" />
                         <p class="mt-1.5 font-display text-[0.76rem] font-bold leading-tight">Kuis adil</p>
                         <p class="mt-0.5 text-[0.66rem] font-medium leading-snug text-ink-soft">
                             Tiga kesempatan, timer dihitung di server.
                         </p>
                     </div>
-                    <div class="rounded-lg border-2 border-ink bg-sky/50 p-3 shadow-[var(--shadow-flat-sm)]">
+                    <div class="rounded-lg border-2 border-ink bg-brand-soft/50 p-3 shadow-[var(--shadow-flat-sm)]">
                         <x-icon name="certificate" class="size-5" :stroke="2" />
                         <p class="mt-1.5 font-display text-[0.76rem] font-bold leading-tight">Bisa diverifikasi</p>
                         <p class="mt-0.5 text-[0.66rem] font-medium leading-snug text-ink-soft">
@@ -95,7 +113,7 @@
 
                 <div class="rounded-lg border-2 border-ink bg-paper p-3.5 shadow-[var(--shadow-flat-sm)]">
                     <p class="flex items-start gap-2 text-[0.68rem] font-semibold leading-relaxed text-ink-soft">
-                        <x-icon name="info" class="mt-px size-4 shrink-0 text-teal-deep" :stroke="2" />
+                        <x-icon name="info" class="mt-px size-4 shrink-0 text-brand-deep" :stroke="2" />
                         <span>
                             Tema karya: <strong class="text-ink">{{ $program['theme'] }}</strong> —
                             subtema {{ $program['subtheme'] }}.
@@ -199,7 +217,7 @@
                                 type="checkbox"
                                 name="remember"
                                 value="1"
-                                class="size-4 rounded-xs border-2 border-ink accent-teal"
+                                class="size-4 rounded-xs border-2 border-ink accent-brand"
                             >
                             <span class="text-[0.7rem] font-semibold text-ink-soft">Ingat saya di perangkat ini</span>
                         </label>

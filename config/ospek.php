@@ -68,6 +68,50 @@ return [
         'days' => (int) env('OSPEK_TOTAL_DAYS', 8),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Babak Tematik Peta Misi
+    |--------------------------------------------------------------------------
+    |
+    | Peta misi tidak lagi dipecah per hari (satu palang untuk satu hari dengan
+    | satu node). Hari-hari dikelompokkan menjadi babak yang punya narasi
+    | perjalanan, sehingga satu palang menaungi 3-5 node sekaligus dan lintasan
+    | terasa seperti peta game petualangan.
+    |
+    | `from` / `to` adalah nomor hari orientasi (inklusif). Modul masuk ke babak
+    | berdasarkan `unlock_day`-nya. Urutan array menentukan urutan babak.
+    |
+    */
+    'chapters' => [
+        [
+            'key' => 'pengenalan',
+            'title' => 'Pengenalan Kampus',
+            'from' => 1,
+            'to' => 2,
+            'tagline' => 'Kenali rumah baru Anda',
+            'narrative' => 'Dua hari pertama untuk mengurus administrasi, menemukan titik layanan, dan memahami aturan akademik sebelum petualangan sesungguhnya dimulai.',
+            'icon' => 'compass',
+        ],
+        [
+            'key' => 'eksplorasi',
+            'title' => 'Eksplorasi Fakultas',
+            'from' => 3,
+            'to' => 5,
+            'tagline' => 'Masuk ke jantung fakultas',
+            'narrative' => 'Laboratorium, dosen wali, dan unit kegiatan mahasiswa. Di sinilah Anda mulai mengenali alat dan orang yang akan menemani studi Anda.',
+            'icon' => 'layers',
+        ],
+        [
+            'key' => 'aksi',
+            'title' => 'Aksi & Penutupan',
+            'from' => 6,
+            'to' => 8,
+            'tagline' => 'Tunjukkan karyamu',
+            'narrative' => 'Bekali diri dengan etika digital, rancang solusi nyata untuk kampus, lalu tutup perjalanan dengan sertifikat orientasi.',
+            'icon' => 'flag',
+        ],
+    ],
+
     'levels' => [
         1 => ['title' => 'Maba Pemula', 'min_xp' => 0],
         2 => ['title' => 'Penjelajah Kampus', 'min_xp' => 300],
@@ -105,6 +149,54 @@ return [
         'enabled' => env('OSPEK_DEMO_LOGIN', true),
         'nim' => '202653033',
         'password' => 'password',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Engagement Hook (Gugus Wars, Kotak Misteri, Misi Rahasia)
+    |--------------------------------------------------------------------------
+    |
+    | Semua hadiah di bawah diberikan lewat XpService dengan idempotency key,
+    | jadi tidak bisa di-farm dengan mengulang klik atau membuka modal dua kali.
+    |
+    */
+
+    'engagement' => [
+
+        // Hadiah Kotak Misteri Harian. Deterministik per user+tanggal agar
+        // hasilnya bisa diaudit dan tidak bisa diulang dengan reload.
+        'daily_box' => [
+            'min' => 40,
+            'max' => 120,
+            'step' => 20,
+        ],
+
+        // Misi Rahasia: WIRA harus diklik 7x dalam jendela waktu singkat.
+        'secret_mission' => [
+            'clicks' => 7,
+            'window_ms' => 2600,
+            'xp' => 150,
+        ],
+
+        // Gelar "Digital Flexing" di papan peringkat, urut dari atas.
+        // `min_xp` dan `rank_max` dua-duanya harus terpenuhi (atau salah satu
+        // bila nilainya null) supaya gelar tidak diberikan cuma karena XP besar
+        // di kampus yang pesertanya sedikit.
+        'titles' => [
+            ['label' => 'Sang Legenda', 'min_xp' => 4500, 'rank_max' => null, 'frame' => 'legend'],
+            ['label' => 'Sang Ambis', 'min_xp' => 2200, 'rank_max' => null, 'frame' => 'ember'],
+            ['label' => 'Pendekar XP', 'min_xp' => 1400, 'rank_max' => null, 'frame' => 'gold'],
+            ['label' => 'Penjelajah', 'min_xp' => 750, 'rank_max' => null, 'frame' => 'silver'],
+            ['label' => 'Si Rajin', 'min_xp' => 300, 'rank_max' => null, 'frame' => 'plain'],
+        ],
+
+        // FOMO live feed. Seluruh baris berasal dari XP asli milik mahasiswa
+        // lain di kampus yang sama - tidak ada pencapaian fiktif.
+        'live_feed' => [
+            'max_items' => 4,
+            'window_minutes' => 180,
+            'rotate_ms' => 9000,
+        ],
     ],
 
 ];
