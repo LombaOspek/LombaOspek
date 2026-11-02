@@ -867,9 +867,40 @@ NIM,Nama,Jurusan,Email,Kode Gugus
 - **NIM duplikat** → baris dilewati, batch tetap lanjut
 - Maksimal **25 MB** per unggahan
 
-Template siap unduh tersedia di `/admin/akun/template` dan contoh nyata ada di
-`database/data/mahasiswa-ospekquest-contoh-10.csv` (1000 baris:
-`mahasiswa-ospekquest-1000.csv`).
+Template siap unduh tersedia di `/admin/akun/template`.
+
+#### Dataset yang tersedia (`database/data/`)
+
+| Berkas | Isi | Untuk apa |
+|---|---|---|
+| `mahasiswa-umk-ft-1000.csv` | 1000 mahasiswa, **5 prodi** Fakultas Teknik, 200/prodi | dataset produksi / demo penuh |
+| `mahasiswa-umk-ft-contoh-10.csv` | 10 baris, 2 per prodi | uji cepat sebelum unggah 1000 |
+| `mahasiswa-umk-ft-contoh-cacat.csv` | 7 baris, **6 cacat disengaja** | membuktikan laporan "baris dilewati" bekerja |
+| `generate-students.py` | generator deterministik | membuat ulang ketiga berkas di atas |
+| `mahasiswa-ospekquest-*.csv` | dataset lama (2 prodi, NIM bentrok) | arsip — jangan dipakai lagi |
+
+**Lima program studi** (terverifikasi dari situs resmi Fakultas Teknik UMK):
+
+| Prodi | NIM | Jumlah |
+|---|---|:--:|
+| Sistem Informasi | `202653201-202653400` | 200 |
+| Teknik Informatika | `202654201-202654400` | 200 |
+| Teknik Elektro | `202655201-202655400` | 200 |
+| Teknik Mesin | `202656201-202656400` | 200 |
+| Teknik Industri | `202657201-202657400` | 200 |
+
+Kenapa NIM mulai dari **201**, bukan 001: seeder sudah memakai NIM `202653012`,
+`202653033`, `202653044`, `202653055`, `202653067`, `202653078`, dan `202653101`
+untuk akun demo. Rentang yang bertabrakan akan membuat import melewati baris itu
+sebagai "sudah terdaftar".
+
+Berkas ini menghasilkan **197 email kosong** untuk menguji fallback
+`<NIM>@students.umk.ac.id`, dan sebaran gugus tepat 250 orang per gugus.
+
+Dataset ini diuji otomatis: `StudentDatasetImportTest` mengimpor berkas
+sungguhan lalu memastikan 1000 baris masuk, 5 prodi masing-masing 200,
+semua menempel ke gugus, dan fallback email bekerja.
+
 
 ### Peran yang harus disiapkan lebih dulu
 
