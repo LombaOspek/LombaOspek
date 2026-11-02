@@ -193,8 +193,11 @@ class AccountController extends Controller
                     'email' => filled($email) ? trim((string) $email) : $nim.'@students.umk.ac.id',
                     'password' => Hash::make($plainPassword),
                     'role' => UserRole::Student,
-                    'faculty' => 'Fakultas Teknik',
-                    'major' => filled($major) ? trim((string) $major) : 'Sistem Informasi',
+                    // Fakultas diturunkan dari jurusan lewat config, bukan
+                    // di-hardcode: OspekQuest dipakai satu universitas dengan
+                    // 6 fakultas, bukan hanya Fakultas Teknik.
+                    'faculty' => $this->facultyFor($major),
+                    'major' => $this->normalizeMajor($major),
                     'group_id' => $group?->id,
                     'group_name' => $group?->name,
                     'mentor_name' => $group?->mentor_name,
@@ -230,6 +233,47 @@ class AccountController extends Controller
             // Ditampilkan SEKALI di halaman admin dalam bentuk CSV agar panitia
             // bisa mencetak/membagikan. Tidak pernah disimpan plaintext di DB.
             ->with('import_credentials', array_slice($credentials, 0, 1200));
+    }
+
+    /**
+     * Nama jurusan dari CSV dinormalkan ke ejaan resmi. Kalau tidak dikenali,
+     * dipakai apa adanya (di-trim) supaya data panitia tidak hilang diam-diam.
+     */
+    private function normalizeMajor(?string $major): string
+    {
+        $input = trim((string) $major);
+
+        if ($input === '') {
+            return 'Sistem Informasi';
+        }
+
+        foreach (config('ospek.faculties', []) as $programs) {
+            foreach ($programs as $program) {
+                if (strcasecmp($program, $input) === 0) {
+                    return $program;
+                }
+            }
+        }
+
+        return $input;
+    }
+
+    /**
+     * Fakultas pemilik sebuah jurusan. Jurusan yang tidak terdaftar jatuh ke
+     * "Fakultas Teknik" hanya bila memang prodi teknik; kalau tidak, dibiarkan
+     * null agar tidak salah klaim.
+     */
+    private function facultyFor(?string $major): ?string
+    {
+        $normalized = $this->normalizeMajor($major);
+
+        foreach (config('ospek.faculties', []) as $faculty => $programs) {
+            if (in_array($normalized, $programs, true)) {
+                return $faculty;
+            }
+        }
+
+        return null;
     }
 
     public function updateRole(Request $request, User $user): RedirectResponse

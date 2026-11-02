@@ -1,17 +1,19 @@
 """
-Bangkitkan dataset mahasiswa OspekQuest untuk 5 program studi Fakultas Teknik UMK.
+Bangkitkan dataset mahasiswa OspekQuest untuk SELURUH fakultas UMK.
+
+Bukan hanya Fakultas Teknik: OspekQuest dipakai satu universitas, jadi datanya
+harus mencerminkan 6 fakultas dan 16 program studi S1 seperti yang tercantum
+di PMB UMK.
 
 Prinsip yang dipegang:
-1. NAMA diambil dari dataset yang sudah ada (tidak mengarang orang baru), lalu
-   dikombinasikan ulang. Dengan begitu tidak ada keluarga yang tiba-tiba punya
-   anggota dengan nama karangan.
-2. Program studi memakai 5 prodi NYATA Fakultas Teknik UMK, bukan karangan.
-3. NIM tersegmentasi per prodi agar bisa dibaca manusia dan tidak bertabrakan
-   dengan dataset lama (202653xxx = SI, 202654xxx = Informatika).
-4. 20% email dikosongkan untuk menguji fallback `<NIM>@students.umk.ac.id`.
-5. 10 baris terakhir sengaja dibuat cacat (NIM duplikat, nama kosong, gugus
-   tidak dikenal) supaya panitia bisa MELIHAT laporan "baris dilewati" bekerja,
-   dalam berkas terpisah agar dataset bersih tetap bersih.
+1. Nama diambil dari dataset lama lalu dikombinasikan ulang (tidak mengarang
+   orang baru), deterministik lewat seed tetap.
+2. Daftar fakultas & prodi berasal dari PMB UMK, bukan karangan.
+3. NIM tersegmentasi per prodi agar tidak bertabrakan dengan akun demo seeder.
+4. Jumlah mahasiswa per prodi TIDAK rata: prodi populer (Manajemen, PGSD)
+   memang lebih besar, seperti kampus sungguhan.
+5. Sebagian email dikosongkan untuk menguji fallback <NIM>@students.umk.ac.id.
+6. Berkas cacat dibuat terpisah agar dataset bersih tetap bersih.
 """
 
 import csv
@@ -23,19 +25,41 @@ from pathlib import Path
 SRC = Path(r"C:\Users\Aldi\AppData\Local\hermes\attachments\mahasiswa-ospekquest-1000.csv")
 OUT_DIR = Path(r"E:\ProjectWebsitev2\LombaOspek\database\data")
 
-# 5 program studi Fakultas Teknik UMK (terverifikasi dari situs resmi kampus).
-# Prefix NIM mengikuti pola kampus: tahun angkatan + kode prodi.
+# 6 fakultas, 16 program studi S1 (sumber: pmb.umk.ac.id/program-studi).
+# (fakultas, prodi, prefix NIM, jumlah mahasiswa)
 PRODI = [
-    ("Sistem Informasi",  "202653"),   # 653 = Sistem Informasi
-    ("Teknik Informatika", "202654"),  # 654 = Teknik Informatika
-    ("Teknik Elektro",     "202655"),  # 655 = Teknik Elektro
-    ("Teknik Mesin",       "202656"),  # 656 = Teknik Mesin
-    ("Teknik Industri",    "202657"),  # 657 = Teknik Industri
+    # Fakultas Ekonomi dan Bisnis
+    ("Fakultas Ekonomi dan Bisnis", "Manajemen", "202611", 130),
+    ("Fakultas Ekonomi dan Bisnis", "Akuntansi", "202612", 90),
+
+    # Fakultas Hukum
+    ("Fakultas Hukum", "Ilmu Hukum", "202621", 70),
+
+    # Fakultas Keguruan dan Ilmu Pendidikan
+    ("Fakultas Keguruan dan Ilmu Pendidikan", "Pendidikan Guru Sekolah Dasar", "202631", 120),
+    ("Fakultas Keguruan dan Ilmu Pendidikan", "Bimbingan dan Konseling", "202632", 85),
+    ("Fakultas Keguruan dan Ilmu Pendidikan", "Pendidikan Bahasa Inggris", "202633", 75),
+    ("Fakultas Keguruan dan Ilmu Pendidikan", "Pendidikan Bahasa dan Sastra Indonesia", "202634", 55),
+    ("Fakultas Keguruan dan Ilmu Pendidikan", "Pendidikan Matematika", "202635", 50),
+
+    # Fakultas Pertanian
+    ("Fakultas Pertanian", "Agroteknologi", "202641", 60),
+    ("Fakultas Pertanian", "Agribisnis", "202642", 55),
+
+    # Fakultas Teknik
+    ("Fakultas Teknik", "Teknik Informatika", "202651", 100),
+    ("Fakultas Teknik", "Sistem Informasi", "202652", 90),
+    ("Fakultas Teknik", "Teknik Mesin", "202653", 60),
+    ("Fakultas Teknik", "Teknik Elektro", "202654", 50),
+    ("Fakultas Teknik", "Teknik Industri", "202655", 55),
+
+    # Fakultas Psikologi
+    ("Fakultas Psikologi", "Psikologi", "202661", 65),
 ]
 
 GUGUS = ["G-01", "G-02", "G-03", "G-04"]
-
-SEED = 20261  # deterministik: bangkitkan ulang hasilnya selalu sama
+NIM_START = 201   # 001-200 dipakai akun demo seeder
+SEED = 20261
 
 
 def main() -> None:
@@ -47,7 +71,9 @@ def main() -> None:
     depan = sorted({n.split()[0] for n in names})
     belakang = sorted({n.split()[-1] for n in names if len(n.split()) > 1})
 
-    def make_name(taken: set[str]) -> str:
+    taken: set[str] = set()
+
+    def make_name() -> str:
         for _ in range(500):
             candidate = f"{rng.choice(depan)} {rng.choice(belakang)}"
             if candidate not in taken:
@@ -55,99 +81,96 @@ def main() -> None:
                 return candidate
         raise RuntimeError("kombinasi nama habis")
 
-    taken_names: set[str] = set()
-
-    # 1000 mahasiswa, dibagi rata 200 per prodi.
-    #
-    # Nomor mulai dari 101, bukan 001: akun demo seeder memakai NIM di rentang
-    # 001-100 (202653033, 202653044, ...). Kalau dataset memakai rentang yang
-    # sama, import akan melewati baris itu sebagai "sudah terdaftar".
-    NIM_START = 201
-    PER_PRODI = 200
     records: list[dict] = []
     global_index = 0
 
-    for major, prefix in PRODI:
-        for i in range(NIM_START, NIM_START + PER_PRODI):
+    for _faculty, _major, prefix, jumlah in PRODI:
+        for i in range(NIM_START, NIM_START + jumlah):
             nim = f"{prefix}{i:03d}"
-            name = make_name(taken_names)
 
-            # 20% email kosong untuk menguji fallback kolom email.
-            email = "" if rng.random() < 0.20 else f"{nim}@students.umk.ac.id"
+            # ~18% email kosong untuk menguji fallback kolom email.
+            email = "" if rng.random() < 0.18 else f"{nim}@students.umk.ac.id"
 
             records.append({
                 "NIM": nim,
-                "Nama Penuh": name,
-                "Jurusan": major,
+                "Nama Penuh": make_name(),
+                "Jurusan": _major,
                 "Email Kampus": email,
-                # Indeks gugus dari penghitung global, BUKAN len(records)+i:
-                # pola itu melompat tiap ganti prodi dan membuat gugus menumpuk
-                # di dua kelompok saja.
                 "Kode Gugus": GUGUS[global_index % len(GUGUS)],
             })
 
             global_index += 1
 
+    total = len(records)
     rng.shuffle(records)
 
-    # ---------------------------- berkas bersih ----------------------------
-    bersih = OUT_DIR / "mahasiswa-umk-ft-1000.csv"
-    with bersih.open("w", encoding="utf-8-sig", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=["NIM", "Nama Penuh", "Jurusan", "Email Kampus", "Kode Gugus"])
-        w.writeheader()
-        w.writerows(records)
+    fields = ["NIM", "Nama Penuh", "Jurusan", "Email Kampus", "Kode Gugus"]
 
-    # ---------------------------- contoh 10 ----------------------------
-    contoh = OUT_DIR / "mahasiswa-umk-ft-contoh-10.csv"
-    with contoh.open("w", encoding="utf-8-sig", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=["NIM", "Nama Penuh", "Jurusan", "Email Kampus", "Kode Gugus"])
-        w.writeheader()
-        # ambil 2 per prodi supaya variasi jurusan langsung terlihat
-        picked, seen = [], {}
-        for rec in records:
-            seen[rec["Jurusan"]] = seen.get(rec["Jurusan"], 0) + 1
-            if seen[rec["Jurusan"]] <= 2:
-                picked.append(rec)
-        w.writerows(picked[:10])
+    def write(path: Path, data: list[dict]) -> None:
+        with path.open("w", encoding="utf-8-sig", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=fields)
+            w.writeheader()
+            w.writerows(data)
 
-    # ---------------------------- berkas cacat (uji validasi) ----------------------------
-    cacat = OUT_DIR / "mahasiswa-umk-ft-contoh-cacat.csv"
-    with cacat.open("w", encoding="utf-8-sig", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=["NIM", "Nama Penuh", "Jurusan", "Email Kampus", "Kode Gugus"])
-        w.writeheader()
-        w.writerow(records[0])  # valid
-        w.writerow({**records[1], "NIM": records[0]["NIM"]})       # NIM duplikat
-        w.writerow({**records[2], "Nama Penuh": ""})               # nama kosong
-        w.writerow({**records[3], "Kode Gugus": "G-99"})           # gugus tak dikenal
-        w.writerow({**records[4], "NIM": "12345"})                 # NIM bukan 9 digit
-        w.writerow({**records[5], "Jurusan": ""})                  # jurusan kosong -> default
-        w.writerow({**records[6], "Email Kampus": ""})             # email kosong -> fallback
+    bersih = OUT_DIR / "mahasiswa-umk-1000.csv"
+    write(bersih, records)
 
-    # ---------------------------- laporan ----------------------------
-    print(f"bersih   : {bersih.name}  ({len(records)} baris)")
-    print(f"contoh   : {contoh.name}   ({len(picked[:10])} baris)")
-    print(f"cacat    : {cacat.name}  (7 baris, 6 cacat disengaja)")
-    print()
+    # Contoh 10 baris: satu per fakultas dulu (6), lalu 4 sisanya, supaya
+    # variasi fakultas langsung terlihat saat uji cepat.
+    faculty_of = {m: f for f, m, _p, _j in PRODI}
+    picked: list[dict] = []
+    seen_faculty: set[str] = set()
 
-    per_prodi: dict[str, int] = {}
     for rec in records:
-        per_prodi[rec["Jurusan"]] = per_prodi.get(rec["Jurusan"], 0) + 1
+        f = faculty_of[rec["Jurusan"]]
+        if f not in seen_faculty:
+            seen_faculty.add(f)
+            picked.append(rec)
+        if len(picked) == 6:
+            break
 
-    for major, prefix in PRODI:
-        nim_awal = min(r["NIM"] for r in records if r["Jurusan"] == major)
-        nim_akhir = max(r["NIM"] for r in records if r["Jurusan"] == major)
-        print(f"{major:20} {per_prodi[major]:4} orang   NIM {nim_awal}-{nim_akhir}")
+    for rec in records:
+        if len(picked) >= 10:
+            break
+        if all(rec["NIM"] != p["NIM"] for p in picked):
+            picked.append(rec)
+
+    write(OUT_DIR / "mahasiswa-umk-contoh-10.csv", picked[:10])
+
+    cacat = OUT_DIR / "mahasiswa-umk-contoh-cacat.csv"
+    write(cacat, [
+        records[0],                                       # valid
+        {**records[1], "NIM": records[0]["NIM"]},         # NIM duplikat
+        {**records[2], "Nama Penuh": ""},                 # nama kosong
+        {**records[3], "Kode Gugus": "G-99"},             # gugus tak dikenal
+        {**records[4], "NIM": "12345"},                   # NIM bukan 9 digit
+        {**records[5], "Jurusan": ""},                    # jurusan kosong
+        {**records[6], "Email Kampus": ""},               # email kosong
+    ])
+
+    print(f"bersih : {bersih.name} ({total} baris)")
+    print("contoh : mahasiswa-umk-contoh-10.csv (10 baris, 6 fakultas)")
+    print(f"cacat  : {cacat.name} (7 baris, 6 cacat disengaja)")
+    print()
+    print(f"{'Fakultas':42} {'Prodi':40} {'Jml':>4}  NIM")
+    print("-" * 96)
+    for fakultas, major, prefix, jumlah in PRODI:
+        print(f"{fakultas:42} {major:40} {jumlah:4}  {prefix}{NIM_START:03d}..")
+
+    per_fak: dict[str, int] = {}
+    for rec in records:
+        f = faculty_of[rec["Jurusan"]]
+        per_fak[f] = per_fak.get(f, 0) + 1
+
+    print()
+    for fakultas, jumlah in sorted(per_fak.items()):
+        print(f"  {fakultas:44} {jumlah:4}")
 
     kosong = sum(1 for r in records if not r["Email Kampus"])
     print(f"\nemail kosong (uji fallback): {kosong}")
-
-    gugus: dict[str, int] = {}
-    for rec in records:
-        gugus[rec["Kode Gugus"]] = gugus.get(rec["Kode Gugus"], 0) + 1
-    print("sebaran gugus:", dict(sorted(gugus.items())))
-
-    h = hashlib.sha256(bersih.read_bytes()).hexdigest()[:16]
-    print(f"sha256(bersih) = {h}")
+    print("gugus:", dict(sorted({g: sum(1 for r in records if r['Kode Gugus'] == g) for g in GUGUS}.items())))
+    print("prodi terpakai:", len({r['Jurusan'] for r in records}))
+    print(f"sha256(bersih) = {hashlib.sha256(bersih.read_bytes()).hexdigest()[:16]}")
 
 
 if __name__ == "__main__":

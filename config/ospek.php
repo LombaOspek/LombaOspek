@@ -161,6 +161,42 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Fakultas dan Program Studi
+    |--------------------------------------------------------------------------
+    |
+    | Sumber tunggal untuk memetakan jurusan -> fakultas. Dipakai import massal
+    | agar kolom faculty tidak lagi di-hardcode "Fakultas Teknik": OspekQuest
+    | dipakai satu universitas, bukan satu fakultas.
+    |
+    | Daftar mengikuti PMB UMK (6 fakultas, 16 program studi S1). Program
+    | pascasarjana sengaja tidak dimasukkan karena orientasi hanya untuk
+    | mahasiswa baru jenjang S1.
+    |
+    */
+
+    'faculties' => [
+        'Fakultas Ekonomi dan Bisnis' => ['Manajemen', 'Akuntansi'],
+        'Fakultas Hukum' => ['Ilmu Hukum'],
+        'Fakultas Keguruan dan Ilmu Pendidikan' => [
+            'Bimbingan dan Konseling',
+            'Pendidikan Bahasa Inggris',
+            'Pendidikan Guru Sekolah Dasar',
+            'Pendidikan Bahasa dan Sastra Indonesia',
+            'Pendidikan Matematika',
+        ],
+        'Fakultas Pertanian' => ['Agroteknologi', 'Agribisnis'],
+        'Fakultas Teknik' => [
+            'Teknik Mesin',
+            'Teknik Elektro',
+            'Sistem Informasi',
+            'Teknik Informatika',
+            'Teknik Industri',
+        ],
+        'Fakultas Psikologi' => ['Psikologi'],
+    ],
+
     'engagement' => [
 
         // Hadiah Kotak Misteri Harian. Deterministik per user+tanggal agar

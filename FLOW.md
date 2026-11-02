@@ -873,33 +873,53 @@ Template siap unduh tersedia di `/admin/akun/template`.
 
 | Berkas | Isi | Untuk apa |
 |---|---|---|
-| `mahasiswa-umk-ft-1000.csv` | 1000 mahasiswa, **5 prodi** Fakultas Teknik, 200/prodi | dataset produksi / demo penuh |
-| `mahasiswa-umk-ft-contoh-10.csv` | 10 baris, 2 per prodi | uji cepat sebelum unggah 1000 |
-| `mahasiswa-umk-ft-contoh-cacat.csv` | 7 baris, **6 cacat disengaja** | membuktikan laporan "baris dilewati" bekerja |
+| `mahasiswa-umk-1000.csv` | **1210 mahasiswa, 6 fakultas, 16 prodi** | dataset produksi / demo penuh |
+| `mahasiswa-umk-contoh-10.csv` | 10 baris, satu per fakultas | uji cepat sebelum unggah penuh |
+| `mahasiswa-umk-contoh-cacat.csv` | 7 baris, **6 cacat disengaja** | membuktikan laporan "baris dilewati" bekerja |
 | `generate-students.py` | generator deterministik | membuat ulang ketiga berkas di atas |
+| `mahasiswa-umk-ft-1000.csv` | varian khusus **Fakultas Teknik** saja (5 prodi) | demo terfokus prodi sendiri |
 | `mahasiswa-ospekquest-*.csv` | dataset lama (2 prodi, NIM bentrok) | arsip — jangan dipakai lagi |
 
-**Lima program studi** (terverifikasi dari situs resmi Fakultas Teknik UMK):
+**OspekQuest dipakai satu universitas, bukan satu fakultas.** Dataset utama
+mencakup 6 fakultas dan 16 program studi S1 (sumber: PMB UMK):
 
-| Prodi | NIM | Jumlah |
-|---|---|:--:|
-| Sistem Informasi | `202653201-202653400` | 200 |
-| Teknik Informatika | `202654201-202654400` | 200 |
-| Teknik Elektro | `202655201-202655400` | 200 |
-| Teknik Mesin | `202656201-202656400` | 200 |
-| Teknik Industri | `202657201-202657400` | 200 |
+| Fakultas | Prodi | NIM | Jml |
+|---|---|---|:--:|
+| Ekonomi dan Bisnis | Manajemen | `202611201..` | 130 |
+| Ekonomi dan Bisnis | Akuntansi | `202612201..` | 90 |
+| Hukum | Ilmu Hukum | `202621201..` | 70 |
+| Keguruan dan Ilmu Pendidikan | Pendidikan Guru Sekolah Dasar | `202631201..` | 120 |
+| Keguruan dan Ilmu Pendidikan | Bimbingan dan Konseling | `202632201..` | 85 |
+| Keguruan dan Ilmu Pendidikan | Pendidikan Bahasa Inggris | `202633201..` | 75 |
+| Keguruan dan Ilmu Pendidikan | Pendidikan Bahasa dan Sastra Indonesia | `202634201..` | 55 |
+| Keguruan dan Ilmu Pendidikan | Pendidikan Matematika | `202635201..` | 50 |
+| Pertanian | Agroteknologi | `202641201..` | 60 |
+| Pertanian | Agribisnis | `202642201..` | 55 |
+| Teknik | Teknik Informatika | `202651201..` | 100 |
+| Teknik | Sistem Informasi | `202652201..` | 90 |
+| Teknik | Teknik Mesin | `202653201..` | 60 |
+| Teknik | Teknik Elektro | `202654201..` | 50 |
+| Teknik | Teknik Industri | `202655201..` | 55 |
+| Psikologi | Psikologi | `202661201..` | 65 |
+| | **Total** | | **1210** |
+
+Jumlah per prodi **sengaja tidak rata** — Manajemen dan PGSD memang lebih besar,
+seperti kampus sungguhan. Sebaran gugus 302–303 orang.
+
+Pemetaan jurusan → fakultas ada di `config('ospek.faculties')` dan dipakai
+`bulkImport()`; kolom `faculty` tidak lagi di-hardcode "Fakultas Teknik".
 
 Kenapa NIM mulai dari **201**, bukan 001: seeder sudah memakai NIM `202653012`,
 `202653033`, `202653044`, `202653055`, `202653067`, `202653078`, dan `202653101`
 untuk akun demo. Rentang yang bertabrakan akan membuat import melewati baris itu
 sebagai "sudah terdaftar".
 
-Berkas ini menghasilkan **197 email kosong** untuk menguji fallback
-`<NIM>@students.umk.ac.id`, dan sebaran gugus tepat 250 orang per gugus.
+Berkas ini menghasilkan **211 email kosong** untuk menguji fallback
+`<NIM>@students.umk.ac.id`.
 
-Dataset ini diuji otomatis: `StudentDatasetImportTest` mengimpor berkas
-sungguhan lalu memastikan 1000 baris masuk, 5 prodi masing-masing 200,
-semua menempel ke gugus, dan fallback email bekerja.
+Diuji otomatis oleh `StudentDatasetImportTest`: 1210 baris masuk tanpa satu pun
+dilewati, 6 fakultas dengan jumlah tepat, dan **setiap prodi menempel ke fakultas
+yang benar** (16 prodi diperiksa satu per satu).
 
 
 ### Peran yang harus disiapkan lebih dulu

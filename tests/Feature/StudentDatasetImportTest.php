@@ -10,11 +10,15 @@ use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 /**
- * Dataset mahasiswa 5 program studi harus benar-benar bisa diimpor.
+ * Dataset mahasiswa harus benar-benar bisa diimpor, untuk SELURUH fakultas.
  *
- * Tes ini membaca berkas NYATA dari database/data/, bukan string buatan di
- * dalam tes. Kalau CSV-nya rusak (header salah, kolom kurang, gugus tidak
- * dikenal), tes ini gagal — bukan baru ketahuan saat hari-H.
+ * OspekQuest dipakai satu universitas (6 fakultas, 16 prodi S1), bukan satu
+ * fakultas. Tes ini membaca berkas NYATA dari database/data/, jadi kalau
+ * CSV-nya rusak (header salah, gugus tidak dikenal) tes gagal di sini — bukan
+ * baru ketahuan saat hari-H.
+ *
+ * Asersi memakai SELISIH sebelum→sesudah import karena seeder sudah membuat
+ * akun demo lebih dulu; total mentah akan mengikat tes pada isi seeder.
  */
 class StudentDatasetImportTest extends TestCase
 {
@@ -24,8 +28,7 @@ class StudentDatasetImportTest extends TestCase
     {
         parent::setUp();
 
-        // Gugus (G-01..G-04) dan akun admin berasal dari seeder. Tanpa ini
-        // import menolak setiap baris karena kode gugus tidak dikenal.
+        // Gugus (G-01..G-04) dan akun admin berasal dari seeder.
         $this->seed();
     }
 
@@ -44,22 +47,19 @@ class StudentDatasetImportTest extends TestCase
     }
 
     /**
-     * @return array<string, int> jumlah mahasiswa per prodi
+     * @return array<string, int>
      */
-    private function studentCountByMajor(): array
+    private function countBy(string $column): array
     {
         return User::query()
             ->where('role', UserRole::Student)
-            ->selectRaw('major, count(*) as total')
-            ->groupBy('major')
-            ->pluck('total', 'major')
+            ->selectRaw("{$column} as k, count(*) as total")
+            ->groupBy($column)
+            ->pluck('total', 'k')
             ->all();
     }
 
     /**
-     * Selisih jumlah per prodi. Dipakai supaya asersi tidak bergantung pada
-     * data yang sudah dibuat seeder.
-     *
      * @param  array<string, int>  $before
      * @param  array<string, int>  $after
      * @return array<string, int>
@@ -68,8 +68,8 @@ class StudentDatasetImportTest extends TestCase
     {
         $delta = [];
 
-        foreach (array_unique(array_merge(array_keys($before), array_keys($after))) as $major) {
-            $delta[$major] = ($after[$major] ?? 0) - ($before[$major] ?? 0);
+        foreach (array_unique(array_merge(array_keys($before), array_keys($after))) as $key) {
+            $delta[$key] = ($after[$key] ?? 0) - ($before[$key] ?? 0);
         }
 
         ksort($delta);
@@ -77,42 +77,72 @@ class StudentDatasetImportTest extends TestCase
         return $delta;
     }
 
-    public function test_the_clean_dataset_imports_every_row_across_five_study_programs(): void
+    public function test_the_university_wide_dataset_covers_all_six_faculties(): void
     {
-        $before = $this->studentCountByMajor();
+        $before = $this->countBy('faculty');
 
         $this->actingAs($this->admin())
-            ->post('/admin/akun/import', [
-                'file' => $this->upload('mahasiswa-umk-ft-1000.csv'),
-            ])
+            ->post('/admin/akun/import', ['file' => $this->upload('mahasiswa-umk-1000.csv')])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        // Tidak boleh ada baris yang dilewati: kalau ada, header atau kode
-        // gugus di dataset tidak cocok dengan yang dibaca bulkImport().
-        // bulkImport() selalu mengirim array (bisa kosong), jadi yang diuji
-        // adalah isinya — bukan null.
         $this->assertSame([], session('import_skipped'), 'Dataset bersih tidak boleh menghasilkan baris dilewati.');
 
-        $delta = $this->delta($before, $this->studentCountByMajor());
+        $delta = $this->delta($before, $this->countBy('faculty'));
 
-        // Lima program studi Fakultas Teknik UMK, 200 orang masing-masing.
-        // Prodi lain (mis. "Informatika" dari seeder) harus 0: dataset tidak
-        // boleh menambah sembarangan.
+        // Enam fakultas UMK, dengan jumlah tidak rata seperti kampus sungguhan.
         $this->assertSame([
-            'Informatika' => 0,
-            'Sistem Informasi' => 200,
-            'Teknik Elektro' => 200,
-            'Teknik Industri' => 200,
-            'Teknik Informatika' => 200,
-            'Teknik Mesin' => 200,
+            'Fakultas Ekonomi dan Bisnis' => 220,
+            'Fakultas Hukum' => 70,
+            'Fakultas Keguruan dan Ilmu Pendidikan' => 385,
+            'Fakultas Pertanian' => 115,
+            'Fakultas Psikologi' => 65,
+            'Fakultas Teknik' => 355,
         ], $delta);
+
+        $this->assertSame(1210, array_sum($delta));
+    }
+
+    public function test_every_study_program_gets_the_correct_faculty(): void
+    {
+        $this->actingAs($this->admin())
+            ->post('/admin/akun/import', ['file' => $this->upload('mahasiswa-umk-1000.csv')]);
+
+        foreach (config('ospek.faculties') as $faculty => $programs) {
+            foreach ($programs as $program) {
+                $salahFakultas = User::query()
+                    ->where('role', UserRole::Student)
+                    ->where('major', $program)
+                    ->where('faculty', '!=', $faculty)
+                    ->count();
+
+                $this->assertSame(0, $salahFakultas, "Prodi {$program} seharusnya di {$faculty}.");
+            }
+        }
+    }
+
+    public function test_all_sixteen_study_programs_are_present(): void
+    {
+        $this->actingAs($this->admin())
+            ->post('/admin/akun/import', ['file' => $this->upload('mahasiswa-umk-1000.csv')]);
+
+        $expectedPrograms = collect(config('ospek.faculties'))->flatten()->all();
+
+        $this->assertCount(16, $expectedPrograms, 'Config fakultas harus memuat 16 prodi S1.');
+
+        foreach ($expectedPrograms as $program) {
+            $this->assertGreaterThan(
+                0,
+                User::query()->where('role', UserRole::Student)->where('major', $program)->count(),
+                "Prodi {$program} tidak muncul di data hasil import.",
+            );
+        }
     }
 
     public function test_every_imported_student_is_attached_to_a_real_group(): void
     {
         $this->actingAs($this->admin())
-            ->post('/admin/akun/import', ['file' => $this->upload('mahasiswa-umk-ft-1000.csv')]);
+            ->post('/admin/akun/import', ['file' => $this->upload('mahasiswa-umk-1000.csv')]);
 
         $tanpaGugus = User::query()
             ->where('role', UserRole::Student)
@@ -126,9 +156,8 @@ class StudentDatasetImportTest extends TestCase
     public function test_blank_email_column_falls_back_to_campus_address(): void
     {
         $this->actingAs($this->admin())
-            ->post('/admin/akun/import', ['file' => $this->upload('mahasiswa-umk-ft-1000.csv')]);
+            ->post('/admin/akun/import', ['file' => $this->upload('mahasiswa-umk-1000.csv')]);
 
-        // Dataset sengaja mengosongkan ~20% email untuk menguji fallback.
         $fallback = User::query()
             ->where('role', UserRole::Student)
             ->whereRaw('email = CONCAT(nim, ?)', ['@students.umk.ac.id'])
@@ -141,7 +170,7 @@ class StudentDatasetImportTest extends TestCase
     public function test_the_deliberately_broken_file_is_reported_row_by_row(): void
     {
         $this->actingAs($this->admin())
-            ->post('/admin/akun/import', ['file' => $this->upload('mahasiswa-umk-ft-contoh-cacat.csv')])
+            ->post('/admin/akun/import', ['file' => $this->upload('mahasiswa-umk-contoh-cacat.csv')])
             ->assertRedirect();
 
         $skipped = session('import_skipped');
@@ -150,19 +179,17 @@ class StudentDatasetImportTest extends TestCase
 
         $gabung = strtolower(implode(' | ', $skipped));
 
-        // Enam cacat disengaja harus tertangkap semuanya.
         $this->assertStringContainsString('sudah terdaftar', $gabung, 'NIM duplikat tidak dilaporkan.');
         $this->assertStringContainsString('nama kosong', $gabung, 'Nama kosong tidak dilaporkan.');
         $this->assertStringContainsString('tidak ditemukan', $gabung, 'Gugus tak dikenal tidak dilaporkan.');
 
-        // Baris yang sah tetap masuk.
         $this->assertGreaterThanOrEqual(1, User::query()->where('role', UserRole::Student)->count());
     }
 
     public function test_generated_student_numbers_are_nine_digits_and_unique(): void
     {
         $this->actingAs($this->admin())
-            ->post('/admin/akun/import', ['file' => $this->upload('mahasiswa-umk-ft-1000.csv')]);
+            ->post('/admin/akun/import', ['file' => $this->upload('mahasiswa-umk-1000.csv')]);
 
         $nims = User::query()->where('role', UserRole::Student)->pluck('nim');
 
