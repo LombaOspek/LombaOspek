@@ -67,6 +67,84 @@
                 </div>
             @endif
 
+            {{-- Kredensial hasil import: tampil SEKALI di sini, tidak pernah
+                 disimpan plaintext di database. Tanpa ini akun hasil import
+                 tidak bisa login dan hanya bisa dipulihkan lewat DB. --}}
+            @if (session('import_credentials'))
+                @php $credRows = session('import_credentials'); @endphp
+
+                <div class="mt-2.5 rounded-sm border-2 border-vermilion bg-vermilion/10 p-2.5" data-import-credentials>
+                    <div class="flex flex-wrap items-start justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="text-[0.6rem] font-extrabold uppercase tracking-[0.1em] text-vermilion-deep">
+                                Simpan sekarang — hanya tampil sekali
+                            </p>
+                            <p class="mt-0.5 text-[0.64rem] font-semibold leading-snug text-ink-soft">
+                                {{ count($credRows) }} akun dibuat. Unduh CSV ini lalu bagikan ke mahasiswa;
+                                sandi tidak bisa dilihat lagi setelah halaman ditutup.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="shrink-0 rounded-sm border-2 border-ink bg-gold px-2 py-1 font-display text-[0.62rem] font-extrabold uppercase"
+                            data-download-credentials
+                        >
+                            Unduh CSV
+                        </button>
+                    </div>
+
+                    <div class="mt-2 max-h-48 overflow-auto rounded-xs border-[1.5px] border-ink/30 bg-paper">
+                        <table class="w-full text-left">
+                            <thead class="sticky top-0 bg-paper-dim">
+                                <tr>
+                                    <th class="px-2 py-1 font-display text-[0.56rem] font-extrabold uppercase tracking-[0.08em]">NIM</th>
+                                    <th class="px-2 py-1 font-display text-[0.56rem] font-extrabold uppercase tracking-[0.08em]">Nama</th>
+                                    <th class="px-2 py-1 font-display text-[0.56rem] font-extrabold uppercase tracking-[0.08em]">Sandi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($credRows as $cred)
+                                    <tr class="border-t border-ink/10">
+                                        <td class="px-2 py-1 font-mono text-[0.62rem] font-bold">{{ $cred['nim'] }}</td>
+                                        <td class="px-2 py-1 text-[0.62rem] font-semibold">{{ $cred['name'] }}</td>
+                                        <td class="px-2 py-1 font-mono text-[0.62rem] font-bold text-vermilion-deep">{{ $cred['password'] }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                @push('scripts')
+                    <script type="application/json" id="import-credentials-data">@json($credRows)</script>
+                    <script type="module">
+                        // Unduh sebagai CSV supaya panitia bisa mencetak dan membagikan
+                        // kredensial tanpa menyalin satu per satu dari tabel.
+                        const payload = JSON.parse(document.getElementById('import-credentials-data').textContent);
+
+                        document.querySelector('[data-download-credentials]')?.addEventListener('click', () => {
+                            const escape = (v) => `"${String(v).replace(/"/g, '""')}"`;
+                            const lines = [['NIM', 'Nama', 'Sandi'].map(escape).join(',')];
+
+                            payload.forEach((row) => {
+                                lines.push([row.nim, row.name, row.password].map(escape).join(','));
+                            });
+
+                            const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+
+                            a.href = url;
+                            a.download = 'kredensial-ospekquest-' + new Date().toISOString().slice(0, 10) + '.csv';
+                            a.click();
+
+                            URL.revokeObjectURL(url);
+                        });
+                    </script>
+                @endpush
+            @endif
+
             <form method="POST" action="{{ route('admin.accounts.import') }}" enctype="multipart/form-data" class="mt-3 flex flex-col gap-2.5" data-submit-lock>
                 @csrf
 

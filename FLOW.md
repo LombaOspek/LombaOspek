@@ -752,6 +752,30 @@ Secara teori bisa dipaksakan (runtime `vercel-community/php` + Postgres eksterna
 S3), tetapi itu menambah tiga dependensi baru hanya untuk mengejar platform yang
 salah bentuk. Untuk karya lomba, risikonya tidak sepadan.
 
+### Kalau akun trial sudah habis (kasus Anda)
+
+Railway free plan butuh verifikasi akun GitHub yang aktif. Kalau trial sudah
+_expired_, jangan mengikat diri ke platform yang menuntut verifikasi ulang.
+Urutan ini dipilih karena **tidak butuh trial, tidak butuh kartu, dan tidak tidur
+saat dinilai**:
+
+| Prioritas | Opsi | Kenapa | Batasan |
+|:--:|---|---|---|
+| 1 | **VPS kampus / lab** | gratis, tidak tidur, kontrol penuh, IP sendiri | Anda urus Nginx + SSL |
+| 2 | **GitHub Student Pack → DigitalOcean $200** | kredit 1 tahun, droplet 1 GB cukup | perlu verifikasi status mahasiswa (KTM) |
+| 3 | **InfinityFree** | gratis selamanya, PHP + MySQL, tanpa kartu | tanpa SSH, tanpa queue, performa terbatas |
+| 4 | **Koyeb** | 1 web service 512 MB, tanpa kartu | perlu Dockerfile |
+| 5 | **Laravel Cloud** | paling mulus untuk Laravel | $5 kredit, bulan pertama saja |
+
+> **Untuk lomba, VPS kampus adalah pilihan teraman.** Ia tidak akan spin-down
+> atau kehabisan kredit tepat saat juri membuka tautan — kegagalan yang paling
+> memalukan dan paling mudah dihindari.
+
+**Kalau memilih InfinityFree** (paling cepat, tanpa urus server): unggah lewat
+FTP, arahkan document root ke `public/`, lalu sesuaikan `APP_URL` dan
+`DB_*` dari panel. Tidak ada `php artisan` lewat SSH, jadi jalankan migrasi
+**sebelum** unggah — ekspor database lokal, impor lewat phpMyAdmin.
+
 ### Pilihan yang realistis (semua tanpa kartu kredit)
 
 | Opsi | Gratis? | Cocok untuk OspekQuest | Catatan |
@@ -776,6 +800,96 @@ salah bentuk. Untuk karya lomba, risikonya tidak sepadan.
 - [ ] `php artisan storage:link` untuk bukti foto
 - [ ] `php artisan config:cache route:cache view:cache`
 - [ ] Ganti `APP_KEY` produksi dan sandi akun demo
+
+---
+
+## 10.1 Flow produksi — dari hari nol sampai hari pertama
+
+**Tidak ada registrasi mandiri.** Rute `/register` tidak ada, dan `AuthController::login()`
+hanya mencocokkan `nim` atau `email` yang **sudah ada di database**. Artinya urutan
+produksi bersifat wajib, bukan pilihan:
+
+```mermaid
+flowchart TD
+    A["1. Deploy + migrate"] --> B["2. Seeder katalog<br/>Quest, SideQuest, Achievement, Reward"]
+    B --> C["3. Admin login ADMIN-01"]
+    C --> D["4. Buat Gugus<br/>+ tunjuk LO sebagai mentor"]
+    D --> E["5. Import CSV mahasiswa<br/>1000 baris sekali jalan"]
+    E --> F["6. Unduh CSV kredensial<br/>bagikan ke mahasiswa"]
+    F --> G["7. Mahasiswa login (NIM + sandi)"]
+    G --> H["8. Orientasi berjalan<br/>XP, koin, Side Quest, Bursa"]
+    H --> I["9. Panitia serahkan hadiah<br/>reward:fulfill &lt;kode&gt;"]
+    I --> J["10. Sertifikat terbit otomatis<br/>setelah 13 modul utama"]
+```
+
+### Urutan yang tidak boleh dibalik
+
+| # | Langkah | Kenapa harus di urutan ini |
+|---|---|---|
+| 1 | `php artisan migrate --force` | Tabel harus ada sebelum apa pun |
+| 2 | `db:seed` (katalog) | Tanpa katalog, peta kosong dan Bursa tidak punya hadiah |
+| 3 | Login admin | Hanya admin yang bisa membuat gugus & import |
+| 4 | **Buat gugus dulu** | CSV merujuk kolom "Kode Gugus"; kode tak dikenal → baris dilewati |
+| 5 | Import CSV mahasiswa | Membuat akun + menempelkan ke gugus |
+| 6 | **Unduh kredensial** | Sandi hanya tampil **sekali** di halaman admin |
+| 7 | Mahasiswa login | Setelah ini normal |
+
+**Kenapa gugus sebelum import:** `bulkImport()` mencocokkan kolom "Kode Gugus"
+dengan `invitation_code`, `code`, atau `name`. Kalau gugusnya belum ada, baris itu
+dilewati dan dilaporkan sebagai "gugus tidak ditemukan" — mahasiswa tetap dibuat
+tetapi tanpa gugus, yang merusak Gugus Wars dan batas wewenang LO.
+
+**Kenapa kredensial wajib diunduh:** tidak ada fitur "lupa sandi" dan tidak ada
+email reset. Kalau CSV kredensial hilang, satu-satunya pemulihan adalah lewat
+database:
+
+```bash
+php artisan tinker --execute="
+App\Models\User::where('nim','202653033')
+  ->first()->forceFill(['password'=>bcrypt('sandi-baru')])->save();"
+```
+
+Untuk 1000 mahasiswa, kehilangan CSV berarti kerja manual berhari-hari. **Unduh
+dan simpan sebelum menutup halaman import.**
+
+### Template CSV
+
+Header wajib, urutan kolom tetap:
+
+```csv
+NIM,Nama,Jurusan,Email,Kode Gugus
+202654001,Siti Aminah,Sistem Informasi,siti@student.umk.ac.id,GARUDA-A1B2
+202654002,Budi Hartono,Informatika,,MERpati-C3D4
+```
+
+- **Email boleh kosong** → otomatis `<NIM>@students.umk.ac.id`
+- **Jurusan kosong** → "Sistem Informasi"
+- **NIM duplikat** → baris dilewati, batch tetap lanjut
+- Maksimal **25 MB** per unggahan
+
+Template siap unduh tersedia di `/admin/akun/template` dan contoh nyata ada di
+`database/data/mahasiswa-ospekquest-contoh-10.csv` (1000 baris:
+`mahasiswa-ospekquest-1000.csv`).
+
+### Peran yang harus disiapkan lebih dulu
+
+Sebelum import massal, pastikan sudah ada:
+
+1. **1 Superadmin** — dari seeder (`ADMIN-01`), atau buat manual lalu **ganti sandinya**
+2. **4 LO** — karena `storeGroup()` mewajibkan `mentor_id` menunjuk user berperan LO
+3. **Gugus** — minimal 1 per kelompok orientasi
+
+> Urutan ini nyata, bukan teoretis: `test_group_requires_an_actual_liaison_officer_as_mentor`
+> memastikan gugus **tidak bisa** dibuat tanpa LO sungguhan.
+
+### Hal yang harus dimatikan sebelum publik
+
+| Setelan | Nilai produksi | Risiko kalau lupa |
+|---|---|---|
+| `APP_DEBUG` | `false` | Stack trace + kredensial DB bocor ke peramban |
+| `OSPEK_DEMO_LOGIN` | `false` | Siapa pun masuk sebagai akun demo = ambil alih XP |
+| `APP_ENV` | `production` | Halaman error menampilkan detail internal |
+| Sandi akun demo | diganti | `202653033`/`password` bisa dipakai siapa saja |
 
 ---
 

@@ -7,6 +7,7 @@ use App\Models\Group;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
@@ -74,6 +75,37 @@ class AccountManagementTest extends TestCase
 
         $this->assertSame(UserRole::Student, $siti->role);
         $this->assertSame(0, $siti->xp);
+    }
+
+    public function test_bulk_import_returns_usable_credentials_when_passwords_are_generated(): void
+    {
+        $group = Group::query()->firstOrFail();
+
+        $csv = "NIM,Nama,Jurusan,Email,Kode Gugus\n"
+            ."209900911,Rina Wati,Sistem Informasi,rina@student.umk.ac.id,{$group->code}\n";
+
+        $this->actingAs($this->admin())
+            ->post('/admin/akun/import', [
+                'file' => $this->csvFile($csv),
+                'auto_generate_password' => '1',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $credentials = session('import_credentials');
+
+        // Regresi: sandi acak dulu di-hash lalu dibuang, sehingga akun hasil
+        // import TIDAK BISA LOGIN sama sekali. Sekarang sandi plaintext harus
+        // dikembalikan sekali ke admin.
+        $this->assertIsArray($credentials);
+        $this->assertCount(1, $credentials);
+        $this->assertSame('209900911', $credentials[0]['nim']);
+
+        $plain = $credentials[0]['password'];
+
+        // Buktikan sandi itu benar-benar berlaku untuk akun yang dibuat.
+        $user = User::query()->where('nim', '209900911')->firstOrFail();
+        $this->assertTrue(Hash::check($plain, $user->password));
     }
 
     public function test_bulk_import_skips_duplicate_nim_without_failing_the_batch(): void

@@ -136,6 +136,12 @@ class AccountController extends Controller
         $skipped = [];
         $row = 1;
 
+        // Kredensial yang dibuat pada import ini. WAJIB dikembalikan ke admin:
+        // sebelumnya sandi acak di-hash lalu dibuang, sehingga akun hasil import
+        // tidak bisa login sama sekali dan hanya bisa dipulihkan lewat database.
+        $credentials = [];
+        $autoPassword = $request->boolean('auto_generate_password');
+
         DB::beginTransaction();
 
         try {
@@ -179,11 +185,13 @@ class AccountController extends Controller
                     $skipped[] = "Baris {$row}: gugus \"".trim((string) $groupCode).'" tidak ditemukan';
                 }
 
+                $plainPassword = $autoPassword ? Str::password(10) : 'password';
+
                 User::create([
                     'nim' => $nim,
                     'name' => $name,
                     'email' => filled($email) ? trim((string) $email) : $nim.'@students.umk.ac.id',
-                    'password' => Hash::make($request->boolean('auto_generate_password') ? Str::password(10) : 'password'),
+                    'password' => Hash::make($plainPassword),
                     'role' => UserRole::Student,
                     'faculty' => 'Fakultas Teknik',
                     'major' => filled($major) ? trim((string) $major) : 'Sistem Informasi',
@@ -193,6 +201,12 @@ class AccountController extends Controller
                     'xp' => 0,
                     'level' => 1,
                 ]);
+
+                $credentials[] = [
+                    'nim' => $nim,
+                    'name' => $name,
+                    'password' => $plainPassword,
+                ];
 
                 $created++;
             }
@@ -212,7 +226,10 @@ class AccountController extends Controller
             'message' => $created.' akun dibuat'.($skipped === [] ? '.' : ', '.count($skipped).' baris dilewati.'),
             'icon' => 'check',
             'tone' => $skipped === [] ? 'success' : 'warning',
-        ])->with('import_skipped', array_slice($skipped, 0, 15));
+        ])->with('import_skipped', array_slice($skipped, 0, 15))
+            // Ditampilkan SEKALI di halaman admin dalam bentuk CSV agar panitia
+            // bisa mencetak/membagikan. Tidak pernah disimpan plaintext di DB.
+            ->with('import_credentials', array_slice($credentials, 0, 1200));
     }
 
     public function updateRole(Request $request, User $user): RedirectResponse
