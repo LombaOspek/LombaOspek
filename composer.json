@@ -56,6 +56,15 @@
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"
         ],
+        "check:php": [
+            "@php -r \"if (PHP_VERSION_ID < 80400) { fwrite(STDERR, PHP_EOL.'[FATAL] OspekQuest butuh PHP >= 8.4, yang terpasang '.PHP_VERSION.PHP_EOL); exit(1); }\""
+        ],
+        "build:production": [
+            "@check:php",
+            "composer install --no-dev --optimize-autoloader --no-interaction",
+            "npm ci",
+            "npm run build"
+        ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
         ],
@@ -77,6 +86,9 @@
         }
     },
     "config": {
+        "platform": {
+            "php": "8.4.4"
+        },
         "optimize-autoloader": true,
         "preferred-install": "dist",
         "sort-packages": true,

@@ -738,6 +738,69 @@ Aplikasi ini **tidak statis**. Yang wajib ada di server:
 `Schedule::` di kode), WebSocket. Ini membuat aplikasi bisa jalan di paket gratis
 yang paling sederhana sekalipun.
 
+### Wasmer: build gagal karena PHP 8.3 (bukan 8.4)
+
+Gejala yang terlihat di log:
+
+```
+In Request.php line 117:
+  syntax error, unexpected token "{", expecting "," or ";"
+```
+
+Baris itu adalah **property hooks** — fitur PHP **8.4**:
+
+```php
+public ParameterBag $attributes {
+    set { ... }
+}
+```
+
+Log build sendiri menyebutkan penyebabnya di baris kedua:
+
+```
+PHP version: 8.3.29
+```
+
+**Rantai sebabnya:**
+
+| Lapisan | Nilai | Akibat |
+|---|---|---|
+| `composer.json` `require.php` | `^8.4` | butuh PHP ≥ 8.4 |
+| `symfony/*` v8.1.10 | `php >=8.4.1` | memakai sintaks 8.4 |
+| Wasmer `phpix` | **8.3.29** | tidak bisa mem-parse file |
+| `--ignore-platform-reqs` | aktif | Composer **tidak** memeriksa, jadi lolos build lalu meledak saat runtime |
+
+Baris terakhir itu kuncinya: `composer install --ignore-platform-reqs` mematikan
+satu-satunya penjaga yang bisa menangkap ketidakcocokan ini lebih awal.
+
+**Yang sudah diperbaiki di repo:**
+
+1. `config.platform.php = 8.4.4` — Composer menyelesaikan dependensi untuk
+   PHP 8.4 walau dijalankan di mesin lain, sehingga lock file tidak bisa
+   "diam-diam" dipenuhi paket yang salah platform.
+2. Script `check:php` — gagal cepat dengan pesan jelas alih-alih `syntax error`
+   yang membingungkan:
+   ```
+   [FATAL] OspekQuest butuh PHP >= 8.4, yang terpasang 8.3.29
+   ```
+3. Script `build:production` — `--no-dev` + `npm ci`, karena paket dev
+   (phpunit, boost, pail) tidak diperlukan di produksi dan hanya memperlambat build.
+
+**Yang tetap harus Anda lakukan di sisi Wasmer:** pilih PHP **8.4** sebagai
+runtime. Selama platform masih 8.3, build akan tetap gagal — dan kegagalannya
+kini jelas menyebut versi, bukan `syntax error` di file vendor.
+
+Kalau Wasmer belum menyediakan PHP 8.4, dua jalan keluarnya:
+
+| Jalan | Konsekuensi |
+|---|---|
+| Turunkan `symfony/*` ke v7.x (`composer require symfony/http-foundation:^7.4 -W`) | Laravel 13 resmi mendukung Symfony 7.4 — berjalan di PHP 8.3, tapi Anda kehilangan fitur 8.4 |
+| Pindah ke platform yang mendukung PHP 8.4 (VPS kampus, Koyeb via Dockerfile) | Tidak ada perubahan kode |
+
+**Untuk lomba, hindari menurunkan dependensi** — itu mengubah fondasi proyek
+hanya demi satu platform. PHP 8.4 adalah versi stabil saat ini dan tersedia di
+hampir semua VPS modern.
+
 ### Kenapa Vercel tidak cocok
 
 Vercel menjalankan PHP sebagai **serverless function**: filesystem-nya read-only
