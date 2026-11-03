@@ -197,6 +197,44 @@ return [
         'Fakultas Psikologi' => ['Psikologi'],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Ekonomi Koin
+    |--------------------------------------------------------------------------
+    |
+    | XP mengukur progres dan tidak pernah berkurang. Koin adalah mata uang
+    | belanja di Bursa Hadiah. Keduanya punya ledger sendiri.
+    |
+    | Rasio sengaja TIDAK seragam: Side Quest diberi 100% dari XP-nya supaya
+    | mahasiswa punya alasan nyata bersosialisasi (tujuan proposal), sedangkan
+    | modul hanya 10% karena modul wajib dikerjakan semua orang.
+    |
+    */
+
+    'coins' => [
+        // Persentase XP yang dikonversi jadi koin, per jenis sumber.
+        'rates' => [
+            'quest' => 0.10,
+            'quiz' => 0.05,
+            'side_quest' => 1.00,
+        ],
+
+        // Hadiah tetap (bukan persentase) untuk sumber tertentu.
+        'flat' => [
+            'achievement' => 50,
+            'daily_box' => 20,
+            'secret_mission' => 30,
+        ],
+
+        // Pembulatan ke bawah; sisa kecil tidak diakumulasi agar ledger bersih.
+        'round' => 'floor',
+
+        // XP minimum agar konversi persentase menghasilkan koin. Di bawah ini
+        // tidak ada koin, supaya XP 7 tidak menghasilkan 0 koin yang
+        // membingungkan (baris ledger bernilai nol).
+        'min_xp' => 10,
+    ],
+
     'engagement' => [
 
         // Hadiah Kotak Misteri Harian. Deterministik per user+tanggal agar

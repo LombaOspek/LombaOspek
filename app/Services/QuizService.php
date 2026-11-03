@@ -19,6 +19,7 @@ class QuizService
 {
     public function __construct(
         private readonly XpService $xp,
+        private readonly CoinService $coins,
         private readonly ProgressionService $progression,
         private readonly AchievementService $achievements,
     ) {}
@@ -164,14 +165,26 @@ class QuizService
         ]);
 
         if ($isPassed) {
-            // Kunci idempotensi per modul: percobaan ulang tidak menambah XP.
+            // Kunci idempotensi per modul: percobaan ulang tidak menambah XP
+            // maupun koin.
+            $quizKey = "quiz:{$user->getKey()}:{$moduleCode}";
+
             $this->xp->award(
                 $user,
                 $earnedXp,
                 'quiz',
                 $attempt->getKey(),
                 "Kuis {$moduleCode} lulus ({$correct}/{$total})",
-                "quiz:{$user->getKey()}:{$moduleCode}",
+                $quizKey,
+            );
+
+            $this->coins->awardForXp(
+                $user,
+                $earnedXp,
+                'quiz',
+                $attempt->getKey(),
+                "Koin kuis {$moduleCode}",
+                $quizKey,
             );
 
             $quest = $user->quests()->where('quiz_module_code', $moduleCode)->first();

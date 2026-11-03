@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AchievementService;
 use App\Services\ProgressionService;
 use App\Services\VerificationService;
+use App\Services\CoinService;
 use App\Services\XpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -21,6 +22,7 @@ class QuestController extends Controller
     public function __construct(
         private readonly ProgressionService $progression,
         private readonly XpService $xp,
+        private readonly CoinService $coins,
         private readonly AchievementService $achievements,
     ) {}
 
@@ -186,13 +188,28 @@ class QuestController extends Controller
         $this->progression->complete($user, $quest, $request->validated('reflection'), $awarded);
 
         if ($awarded > 0) {
+            // Side Quest adalah sumber koin terbesar (100% XP) karena ia
+            // opsional; modul wajib hanya 10%. Jenis sumber inilah yang
+            // membedakan keduanya di CoinService.
+            $sourceType = $quest->is_side_quest ? 'side_quest' : 'quest';
+            $key = "quest:{$user->getKey()}:{$quest->getKey()}";
+
             $this->xp->award(
                 $user,
                 $awarded,
-                'quest',
+                $sourceType,
                 $quest->getKey(),
                 "Modul selesai: {$quest->title}",
-                "quest:{$user->getKey()}:{$quest->getKey()}",
+                $key,
+            );
+
+            $this->coins->awardForXp(
+                $user,
+                $awarded,
+                $sourceType,
+                $quest->getKey(),
+                "Koin modul: {$quest->title}",
+                $key,
             );
         }
 

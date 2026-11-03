@@ -24,7 +24,10 @@ use Illuminate\Support\Facades\Log;
  */
 class EngagementService
 {
-    public function __construct(private readonly XpService $xp) {}
+    public function __construct(
+        private readonly XpService $xp,
+        private readonly CoinService $coins,
+    ) {}
 
     /* ------------------------------------------------------------------
      * 1. Gugus Wars — adu tarik XP antargugus
@@ -159,14 +162,18 @@ class EngagementService
             return ['xp' => 0, 'balance_after' => null, 'already' => true];
         }
 
+        $boxKey = "daily_box:{$user->getKey()}:{$period}";
+
         $balance = $this->xp->award(
             $user,
             $value,
             'daily_box',
             null,
             'Kotak Misteri Harian',
-            "daily_box:{$user->getKey()}:{$period}",
+            $boxKey,
         );
+
+        $this->coins->awardForXp($user, $value, 'daily_box', null, 'Koin Kotak Misteri', $boxKey);
 
         return ['xp' => $value, 'balance_after' => $balance, 'already' => false];
     }
@@ -217,14 +224,18 @@ class EngagementService
             return ['xp' => 0, 'balance_after' => null, 'already' => true];
         }
 
+        $secretKey = "secret_mission:{$user->getKey()}";
+
         $balance = $this->xp->award(
             $user,
             $reward,
             'secret_mission',
             null,
             'Misi Rahasia: WIRA membocorkan jalan pintas',
-            "secret_mission:{$user->getKey()}",
+            $secretKey,
         );
+
+        $this->coins->awardForXp($user, $reward, 'secret_mission', null, 'Koin Misi Rahasia', $secretKey);
 
         return ['xp' => $reward, 'balance_after' => $balance, 'already' => false];
     }

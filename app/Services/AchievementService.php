@@ -20,6 +20,7 @@ class AchievementService
 {
     public function __construct(
         private readonly XpService $xp,
+        private readonly CoinService $coins,
         private readonly ProgressionService $progression,
     ) {}
 
@@ -55,13 +56,26 @@ class AchievementService
             if ($isUnlocked && ! $wasUnlocked) {
                 $newlyUnlocked->push($achievement);
 
+                $key = "achievement:{$user->getKey()}:{$achievement->getKey()}";
+
                 $this->xp->award(
                     $user,
                     $achievement->xp_reward,
                     'achievement',
                     $achievement->getKey(),
                     'Lencana terbuka: '.$achievement->title,
-                    "achievement:{$user->getKey()}:{$achievement->getKey()}",
+                    $key,
+                );
+
+                // Koin memakai kunci yang sama: XP dan koin selalu bertambah
+                // bersama, dan klaim ulang tidak menggandakan keduanya.
+                $this->coins->awardForXp(
+                    $user,
+                    $achievement->xp_reward,
+                    'achievement',
+                    $achievement->getKey(),
+                    'Koin lencana: '.$achievement->title,
+                    $key,
                 );
             }
 

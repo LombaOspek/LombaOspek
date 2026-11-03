@@ -31,6 +31,7 @@ class VerificationService
     public function __construct(
         private readonly ProgressionService $progression,
         private readonly XpService $xp,
+        private readonly CoinService $coins,
         private readonly AchievementService $achievements,
     ) {}
 
@@ -307,13 +308,25 @@ class VerificationService
     {
         $this->progression->complete($user, $quest, $message, $quest->xp_reward);
 
+        $sourceType = $quest->is_side_quest ? 'side_quest' : 'quest';
+        $verifyKey = "quest:{$user->getKey()}:{$quest->getKey()}";
+
         $this->xp->award(
             $user,
             $quest->xp_reward,
-            'quest',
+            $sourceType,
             $quest->getKey(),
             "Modul terverifikasi ({$method->label()}): {$quest->title}",
-            "quest:{$user->getKey()}:{$quest->getKey()}",
+            $verifyKey,
+        );
+
+        $this->coins->awardForXp(
+            $user,
+            $quest->xp_reward,
+            $sourceType,
+            $quest->getKey(),
+            "Koin modul terverifikasi: {$quest->title}",
+            $verifyKey,
         );
 
         // Catat bukti bila verifikasi instan (token / GPS).
