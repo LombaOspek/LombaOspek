@@ -147,6 +147,10 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/akun/template', [AccountController::class, 'template'])->name('accounts.template');
         Route::post('/akun/{user}/peran', [AccountController::class, 'updateRole'])->name('accounts.role');
         Route::delete('/akun/{user}', [AccountController::class, 'destroy'])->name('accounts.destroy');
+        Route::post('/akun/{user}/pulihkan', [AccountController::class, 'restore'])->name('accounts.restore');
+        Route::post('/akun', [AccountController::class, 'store'])->name('accounts.store');
+        Route::put('/akun/{user}', [AccountController::class, 'update'])->name('accounts.update');
+        Route::post('/akun/{user}/sandi', [AccountController::class, 'resetPassword'])->name('accounts.password');
 
         Route::get('/misi', [QuestBuilderController::class, 'index'])->name('quests.index');
         Route::post('/misi', [QuestBuilderController::class, 'store'])->name('quests.store');

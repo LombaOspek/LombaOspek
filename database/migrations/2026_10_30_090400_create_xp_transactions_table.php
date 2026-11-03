@@ -3,6 +3,7 @@
 use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -32,7 +33,10 @@ return new class extends Migration
         });
 
         if (Schema::hasTable('users')) {
-            (new User)->newQuery()->update(['role' => 'student']);
+            // Query builder murni, BUKAN model User: sejak User memakai
+            // SoftDeletes, model menambahkan klausa "where deleted_at is null"
+            // yang belum ada saat migrasi ini berjalan -> migrasi gagal.
+            DB::table('users')->update(['role' => 'student']);
         }
     }
 

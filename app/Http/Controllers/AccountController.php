@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -88,6 +89,32 @@ class AccountController extends Controller
 
         if ($mentor->role !== UserRole::LiaisonOfficer) {
             return back()->withErrors(['mentor_id' => 'User yang dipilih bukan Liaison Officer.'])->withInput();
+        }
+
+        /*
+         * Satu LO hanya boleh membimbing gugus SEJURUSAN.
+         *
+         * Tanpa aturan ini, LO Akuntansi bisa membimbing gugus Teknik Mesin:
+         * ia tidak memahami jadwal dan dosen prodi itu, dan Gugus Wars jadi
+         * tidak adil karena gugus dengan prodi campur akan menang mudah.
+         */
+        if ($mentor->major !== null && $mentor->major !== $validated['study_program']) {
+            return back()->withErrors([
+                'mentor_id' => sprintf(
+                    'LO %s berasal dari %s, tidak bisa membimbing gugus %s.',
+                    $mentor->name,
+                    $mentor->major,
+                    $validated['study_program'],
+                ),
+            ])->withInput();
+        }
+
+        // Satu LO = satu gugus. Kalau jurusan punya banyak gugus, pakai LO
+        // berbeda per gugus supaya beban peninjauan bukti tetap terbagi.
+        if (Group::query()->where('mentor_id', $mentor->getKey())->exists()) {
+            return back()->withErrors([
+                'mentor_id' => $mentor->name.' sudah membimbing gugus lain. Pilih LO lain untuk jurusan ini.',
+            ])->withInput();
         }
 
         $group = Group::create([
@@ -276,6 +303,160 @@ class AccountController extends Controller
         return null;
     }
 
+    /**
+     * Tambah satu akun (LO atau mahasiswa) tanpa lewat CSV.
+     *
+     * Untuk kasus susulan: mahasiswa telat daftar, mahasiswa pindahan, atau LO
+     * baru yang ditunjuk setelah import massal selesai.
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->role->canManageAccounts(), 403);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'nim' => ['required', 'string', 'max:30', 'unique:users,nim'],
+            'email' => ['nullable', 'email', 'max:150', 'unique:users,email'],
+            'role' => ['required', Rule::in([UserRole::Student->value, UserRole::LiaisonOfficer->value])],
+            'major' => ['required', 'string', 'max:120'],
+            'group_id' => ['nullable', 'exists:groups,id'],
+        ], [
+            'nim.unique' => 'NIM ini sudah terdaftar.',
+            'major.required' => 'Jurusan wajib dipilih — dipakai untuk memetakan fakultas.',
+        ]);
+
+        // ?? null wajib: group_id opsional, jadi kuncinya bisa tidak ada sama
+        // sekali di payload, bukan hanya bernilai null.
+        $groupId = $validated['group_id'] ?? null;
+
+        $group = $groupId !== null
+            ? Group::query()->find($groupId)
+            : null;
+
+        // Anggota gugus harus sejurusan. Kalau tidak, Gugus Wars dan batas
+        // wewenang LO jadi tidak bermakna.
+        if ($group !== null && $group->study_program !== null
+            && $group->study_program !== $validated['major']) {
+            return back()->withErrors([
+                'group_id' => 'Gugus '.$group->name.' untuk jurusan '.$group->study_program
+                    .', bukan '.$validated['major'].'.',
+            ])->withInput();
+        }
+
+        $plainPassword = Str::password(10);
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'nim' => $validated['nim'],
+            'email' => filled($validated['email'] ?? null)
+                ? $validated['email']
+                : $validated['nim'].'@students.umk.ac.id',
+            'password' => Hash::make($plainPassword),
+            'role' => UserRole::from($validated['role']),
+            'faculty' => $this->facultyFor($validated['major']),
+            'major' => $this->normalizeMajor($validated['major']),
+            'group_id' => $group?->id,
+            'group_name' => $group?->name,
+            'mentor_name' => $group?->mentor_name,
+            'xp' => 0,
+            'coins' => 0,
+            'level' => 1,
+        ]);
+
+        Log::info('Akun dibuat manual oleh admin.', [
+            'oleh_admin' => $request->user()->getKey(),
+            'target_user' => $user->getKey(),
+            'role' => $user->role->value,
+        ]);
+
+        return back()->with('toast', [
+            'title' => 'Akun dibuat',
+            'message' => $user->name.' · sandi sementara: '.$plainPassword.' (catat sekarang)',
+            'icon' => 'check',
+            'tone' => 'success',
+        ]);
+    }
+
+    /**
+     * Ubah data dasar akun: nama, email, jurusan, gugus.
+     *
+     * NIM tidak diubah karena ia identitas login dan sudah tercetak di
+     * banyak tempat; perubahan NIM ditangani sebagai hapus + buat baru.
+     */
+    public function update(Request $request, User $user): RedirectResponse
+    {
+        abort_unless($request->user()->role->canManageAccounts(), 403);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:150', Rule::unique('users', 'email')->ignore($user->getKey())],
+            'major' => ['required', 'string', 'max:120'],
+            'group_id' => ['nullable', 'exists:groups,id'],
+        ]);
+
+        $groupId = $validated['group_id'] ?? null;
+
+        $group = $groupId !== null
+            ? Group::query()->find($groupId)
+            : null;
+
+        if ($group !== null && $group->study_program !== null
+            && $group->study_program !== $validated['major']) {
+            return back()->withErrors([
+                'group_id' => 'Gugus '.$group->name.' bukan untuk jurusan '.$validated['major'].'.',
+            ])->withInput();
+        }
+
+        $user->forceFill([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'major' => $this->normalizeMajor($validated['major']),
+            'faculty' => $this->facultyFor($validated['major']),
+            'group_id' => $group?->id,
+            'group_name' => $group?->name,
+            'mentor_name' => $group?->mentor_name,
+        ])->save();
+
+        Log::info('Akun diubah oleh admin.', [
+            'oleh_admin' => $request->user()->getKey(),
+            'target_user' => $user->getKey(),
+        ]);
+
+        return back()->with('toast', [
+            'title' => 'Akun diperbarui',
+            'message' => $user->name.' tersimpan.',
+            'icon' => 'check',
+            'tone' => 'success',
+        ]);
+    }
+
+    /**
+     * Setel ulang sandi dan tampilkan sekali.
+     *
+     * Diperlukan karena tidak ada fitur "lupa sandi" maupun email reset:
+     * tanpa ini, mahasiswa yang lupa sandi hanya bisa dipulihkan lewat DB.
+     */
+    public function resetPassword(Request $request, User $user): RedirectResponse
+    {
+        abort_unless($request->user()->role->canManageAccounts(), 403);
+
+        $plainPassword = Str::password(10);
+
+        $user->forceFill(['password' => Hash::make($plainPassword)])->save();
+
+        Log::info('Sandi disetel ulang oleh admin.', [
+            'oleh_admin' => $request->user()->getKey(),
+            'target_user' => $user->getKey(),
+        ]);
+
+        return back()->with('toast', [
+            'title' => 'Sandi disetel ulang',
+            'message' => $user->name.' · sandi baru: '.$plainPassword.' (catat sekarang)',
+            'icon' => 'check',
+            'tone' => 'warning',
+        ]);
+    }
+
     public function updateRole(Request $request, User $user): RedirectResponse
     {
         abort_unless($request->user()->role->canManageAccounts(), 403);
@@ -315,12 +496,30 @@ class AccountController extends Controller
             return back()->withErrors(['user' => 'Anda tidak dapat menghapus akun sendiri.']);
         }
 
-        $name = $user->name;
+        // Konfirmasi ketik NIM/nama: hapus akun memindahkan seluruh riwayat
+        // mahasiswa dari pandangan, jadi tidak boleh terjadi karena salah klik.
+        $confirm = trim((string) $request->input('confirm_identity'));
+
+        if ($confirm !== $user->nim && $confirm !== $user->name) {
+            return back()->withErrors([
+                'confirm_identity' => 'Ketik NIM atau nama akun untuk mengonfirmasi penghapusan.',
+            ]);
+        }
+
+        // Soft delete: riwayat XP, bukti modul, dan klaim hadiah TETAP ADA.
+        // Hard delete akan menghapusnya permanen lewat cascadeOnDelete, dan
+        // saat sengketa tidak tersisa bukti apa pun.
         $user->delete();
+
+        Log::info('Akun dihapus (soft delete).', [
+            'oleh_admin' => $request->user()->getKey(),
+            'target_user' => $user->getKey(),
+            'target_nim' => $user->nim,
+        ]);
 
         return back()->with('toast', [
             'title' => 'Akun dihapus',
-            'message' => $name.' telah dihapus dari sistem.',
+            'message' => $user->name.' dipindahkan ke arsip. Riwayatnya tetap tersimpan dan bisa dipulihkan.',
             'icon' => 'x',
             'tone' => 'warning',
         ]);
@@ -329,6 +528,35 @@ class AccountController extends Controller
     /**
      * Template CSV untuk diunduh panitia.
      */
+    /**
+     * Pulihkan akun yang dihapus (soft delete).
+     */
+    public function restore(Request $request, int $user): RedirectResponse
+    {
+        abort_unless($request->user()->role->canManageAccounts(), 403);
+
+        $target = User::withTrashed()->findOrFail($user);
+
+        if (! $target->trashed()) {
+            return back()->withErrors(['user' => 'Akun ini tidak sedang dihapus.']);
+        }
+
+        $target->restore();
+
+        Log::info('Akun dipulihkan.', [
+            'oleh_admin' => $request->user()->getKey(),
+            'target_user' => $target->getKey(),
+            'target_nim' => $target->nim,
+        ]);
+
+        return back()->with('toast', [
+            'title' => 'Akun dipulihkan',
+            'message' => $target->name.' kembali aktif dengan seluruh riwayatnya.',
+            'icon' => 'check',
+            'tone' => 'success',
+        ]);
+    }
+
     public function template()
     {
         abort_unless(request()->user()->role->canManageAccounts(), 403);

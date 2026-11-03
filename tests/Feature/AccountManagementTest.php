@@ -179,7 +179,19 @@ class AccountManagementTest extends TestCase
 
     public function test_admin_can_create_a_group_and_officer_is_moved_into_it(): void
     {
-        $officer = $this->officer();
+        // Seeder sudah menugaskan setiap LO ke satu gugus, dan aturan baru
+        // menegakkan "satu LO = satu gugus". Jadi tes ini memakai LO baru
+        // yang belum membimbing apa pun, dengan jurusan yang cocok.
+        $officer = User::create([
+            'nim' => 'LO-2024-777',
+            'name' => 'Kak Uji Baru',
+            'email' => 'lo777@example.test',
+            'password' => Hash::make('password'),
+            'role' => UserRole::LiaisonOfficer,
+            'major' => 'Sistem Informasi',
+            'faculty' => 'Fakultas Teknik',
+        ]);
+
         $before = Group::query()->count();
 
         $this->actingAs($this->admin())
@@ -285,10 +297,14 @@ class AccountManagementTest extends TestCase
         $student = User::query()->where('role', UserRole::Student)->firstOrFail();
 
         $this->actingAs($this->admin())
-            ->delete("/admin/akun/{$student->id}")
+            ->delete("/admin/akun/{$student->id}", ['confirm_identity' => $student->nim])
             ->assertRedirect();
 
-        $this->assertDatabaseMissing('users', ['id' => $student->id]);
+        // Soft delete: baris tetap ada (agar riwayat XP & klaim hadiah tidak
+        // hilang lewat cascade) tetapi akun hilang dari query biasa.
+        $this->assertDatabaseHas('users', ['id' => $student->id]);
+        $this->assertNull(User::query()->find($student->id));
+        $this->assertNotNull(User::withTrashed()->find($student->id));
     }
 
     public function test_template_download_contains_expected_header(): void
