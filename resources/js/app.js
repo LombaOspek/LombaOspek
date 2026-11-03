@@ -10,6 +10,7 @@ import { initRewardStore } from './rewards.js';
 import { initImportProgress } from './import-progress.js';
 import { initDropdowns } from './dropdown.js';
 import { initMajorOfficerLink } from './major-officer.js';
+import { initAccountActions } from './account-actions.js';
 
 const prefersReducedMotion = () =>
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -190,6 +191,7 @@ export function boot() {
     initImportProgress();
     initDropdowns();
     initMajorOfficerLink();
+    initAccountActions();
 
     // Level halaman sebelumnya: dipakai untuk mendeteksi kenaikan level.
     const root = document.documentElement;

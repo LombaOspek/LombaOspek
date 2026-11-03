@@ -29,6 +29,12 @@
                 <x-icon name="certificate" class="size-3.5" :stroke="2" />
                 Template CSV
             </a>
+
+            {{-- Tambah satu akun tanpa CSV: mahasiswa telat daftar / LO susulan. --}}
+            <button type="button" class="btn btn-primary btn-sm" data-account-create>
+                <x-icon name="plus" class="size-3.5" :stroke="2.6" />
+                Tambah Akun
+            </button>
         </div>
     </section>
 
@@ -385,6 +391,22 @@
                     <x-icon name="search" class="size-3.5" :stroke="2.2" />
                     Filter
                 </button>
+
+                {{-- Toggle arsip: satu-satunya jalan menemukan akun yang sudah dihapus. --}}
+                @if ($filters['arsip'])
+                    <a href="{{ route('admin.accounts', array_filter(['q' => $filters['q'], 'role' => $filters['role'], 'major' => $filters['major']])) }}"
+                       class="btn btn-sm border-2 border-ink bg-gold font-bold">
+                        <x-icon name="check" class="size-3.5" :stroke="2.6" />
+                        Mode arsip aktif
+                    </a>
+                @else
+                    <a href="{{ route('admin.accounts', array_filter(['q' => $filters['q'], 'role' => $filters['role'], 'major' => $filters['major'], 'arsip' => 1])) }}"
+                       class="btn btn-ghost btn-sm">
+                        <x-icon name="lock" class="size-3.5" :stroke="2.2" />
+                        Lihat arsip
+                    </a>
+                @endif
+
                 @if (filled($filters['q']) || filled($filters['role']) || filled($filters['major']))
                     <a href="{{ route('admin.accounts') }}" class="btn btn-ghost btn-sm">Reset</a>
                 @endif
@@ -405,7 +427,23 @@
                 </thead>
                 <tbody class="divide-y-2 divide-ink/10">
                     @forelse ($users as $user)
-                        <tr class="transition hover:bg-paper-dim/60">
+                        <tr
+                            class="transition hover:bg-paper-dim/60 {{ $user->trashed() ? 'bg-vermilion/10 opacity-70' : '' }}"
+                            data-account-row
+                            data-account-id="{{ $user->id }}"
+                            data-name="{{ $user->name }}"
+                            data-nim="{{ $user->nim }}"
+                            data-email="{{ $user->email }}"
+                            data-role="{{ $user->role->value }}"
+                            data-role-label="{{ $user->role->label() }}"
+                            data-major="{{ $user->major }}"
+                            data-group-id="{{ $user->group_id }}"
+                            data-group-label="{{ $user->group?->name }}"
+                            data-url-create="{{ route('admin.accounts.store') }}"
+                            data-url-update="{{ route('admin.accounts.update', $user) }}"
+                            data-url-delete="{{ route('admin.accounts.destroy', $user) }}"
+                            data-url-password="{{ route('admin.accounts.password', $user) }}"
+                        >
                             <td class="px-3 py-2">
                                 <div class="flex items-center gap-2">
                                     <span class="grid size-7 shrink-0 place-items-center rounded-full border-[1.5px] border-ink bg-brand-soft text-[0.6rem] font-extrabold">
@@ -420,6 +458,9 @@
                             <td class="px-3 py-2 font-mono text-[0.68rem] font-bold">{{ $user->nim }}</td>
                             <td class="px-3 py-2">
                                 <span class="stamp {{ $user->role->badgeClasses() }} text-[0.54rem]">{{ $user->role->label() }}</span>
+                                @if ($user->trashed())
+                                    <span class="stamp ml-1 bg-vermilion text-white text-[0.54rem]">Arsip</span>
+                                @endif
                             </td>
                             <td class="px-3 py-2 text-[0.7rem] font-semibold text-ink-soft">{{ $user->major ?: '—' }}</td>
                             <td class="px-3 py-2">
@@ -441,19 +482,53 @@
                                         <x-icon name="settings" class="size-3" :stroke="2" />
                                     </button>
 
+                                    {{-- Ubah data dasar: nama, email, jurusan, gugus. --}}
+                                    <button
+                                        type="button"
+                                        class="grid size-6 place-items-center rounded-xs border-[1.5px] border-ink bg-paper transition hover:bg-gold"
+                                        data-account-action="edit"
+                                        aria-label="Ubah akun {{ $user->name }}"
+                                        title="Ubah akun"
+                                    >
+                                        <x-icon name="write" class="size-3" :stroke="2" />
+                                    </button>
+
+                                    {{-- Setel ulang sandi: tidak ada fitur lupa sandi di aplikasi ini. --}}
+                                    <button
+                                        type="button"
+                                        class="grid size-6 place-items-center rounded-xs border-[1.5px] border-ink bg-paper transition hover:bg-gold"
+                                        data-account-action="password"
+                                        aria-label="Setel ulang sandi {{ $user->name }}"
+                                        title="Setel ulang sandi"
+                                    >
+                                        <x-icon name="key" class="size-3" :stroke="2" />
+                                    </button>
+
                                     @unless ($user->is(auth()->user()))
-                                        <form method="POST" action="{{ route('admin.accounts.destroy', $user) }}" onsubmit="return confirm('Hapus akun {{ $user->name }}?')">
-                                            @csrf
-                                            @method('DELETE')
+                                        @if ($user->trashed())
+                                            {{-- Akun terarsip: satu-satunya aksi yang masuk akal adalah pulihkan. --}}
+                                            <form method="POST" action="{{ route('admin.accounts.restore', $user) }}">
+                                                @csrf
+                                                <button
+                                                    type="submit"
+                                                    class="grid size-6 place-items-center rounded-xs border-[1.5px] border-ink bg-gold transition hover:bg-brand-soft"
+                                                    aria-label="Pulihkan {{ $user->name }}"
+                                                    title="Pulihkan akun"
+                                                >
+                                                    <x-icon name="unlock" class="size-3" :stroke="2.2" />
+                                                </button>
+                                            </form>
+                                        @else
                                             <button
-                                                type="submit"
+                                                type="button"
                                                 class="grid size-6 place-items-center rounded-xs border-[1.5px] border-ink bg-paper transition hover:bg-vermilion hover:text-white"
+                                                data-account-action="delete"
                                                 aria-label="Hapus {{ $user->name }}"
-                                                title="Hapus akun"
+                                                title="Hapus akun (bisa dipulihkan)"
                                             >
                                                 <x-icon name="x" class="size-3" :stroke="2.4" />
                                             </button>
-                                        </form>
+                                        @endif
                                     @endunless
                                 </div>
 
@@ -499,6 +574,9 @@
         @endif
     </section>
 </div>
+
+{{-- Modal CRUD akun (tambah / ubah / sandi / hapus). --}}
+<x-account-modal :groups="$groups" :majors-by-faculty="$majorsByFaculty" />
 @endsection
 
 @push('scripts')

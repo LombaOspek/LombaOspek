@@ -27,10 +27,17 @@ class AccountController extends Controller
         abort_unless($request->user()->role->canManageAccounts(), 403);
 
         $role = $request->query('role');
-        $major = $request->query('major');
+                $major = $request->query('major');
+                $arsip = $request->boolean('arsip');
 
-        $users = User::query()
-            ->with('group:id,name,badge_color')
+                /*
+                 * Filter arsip: akun yang di-soft-delete tidak muncul di daftar biasa,
+                 * sehingga tanpa tampilan ini tombol "Pulihkan" tidak akan pernah bisa
+                 * dipakai - akunnya sendiri tidak terlihat.
+                 */
+                $users = User::query()
+                    ->when($arsip, fn ($q) => $q->onlyTrashed())
+                    ->with('group:id,name,badge_color')
             ->when($request->filled('q'), function ($q) use ($request): void {
                 $term = '%'.trim((string) $request->query('q')).'%';
 
@@ -100,7 +107,7 @@ class AccountController extends Controller
             'majors' => User::query()->whereNotNull('major')->distinct()->orderBy('major')->pluck('major'),
             'majorsByFaculty' => $majorsByFaculty,
             'officersByMajor' => $officersByMajor,
-            'filters' => ['q' => $request->query('q'), 'role' => $role, 'major' => $major],
+            'filters' => ['q' => $request->query('q'), 'role' => $role, 'major' => $major, 'arsip' => $arsip],
             'availableOfficers' => $officers,
         ]);
     }
