@@ -6,6 +6,8 @@ use App\Enums\UserRole;
 use App\Models\Group;
 use App\Models\QuestSubmission;
 use App\Models\User;
+use App\Services\StudentImportService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -143,7 +145,7 @@ class AccountController extends Controller
      * Import massal dari CSV. Baris yang gagal dilaporkan, bukan dibatalkan
      * seluruhnya — supaya satu NIM duplikat tidak menggagalkan 3.000 baris.
      */
-    public function bulkImport(Request $request): RedirectResponse
+    public function bulkImport(Request $request, StudentImportService $importer): RedirectResponse
     {
         abort_unless($request->user()->role->canManageAccounts(), 403);
 
@@ -152,114 +154,155 @@ class AccountController extends Controller
             'auto_generate_password' => ['nullable', 'boolean'],
         ]);
 
-        $handle = fopen($request->file('file')->getRealPath(), 'rb');
+        $working = storage_path('app/imports');
 
-        if ($handle === false) {
-            return back()->withErrors(['file' => 'File tidak dapat dibaca.']);
+        if (! is_dir($working)) {
+            mkdir($working, 0755, true);
         }
 
-        $header = fgetcsv($handle);
+        $copy = $working.DIRECTORY_SEPARATOR.'sync-'.uniqid().'.csv';
+        copy($request->file('file')->getRealPath(), $copy);
+
+        $total = $importer->countRows($copy);
+        $auto = $request->boolean('auto_generate_password');
+
         $created = 0;
         $skipped = [];
-        $row = 1;
-
-        // Kredensial yang dibuat pada import ini. WAJIB dikembalikan ke admin:
-        // sebelumnya sandi acak di-hash lalu dibuang, sehingga akun hasil import
-        // tidak bisa login sama sekali dan hanya bisa dipulihkan lewat database.
         $credentials = [];
-        $autoPassword = $request->boolean('auto_generate_password');
+        $offset = 0;
 
-        DB::beginTransaction();
+        // Versi sinkron: dipakai bila JavaScript mati (progressive enhancement)
+        // dan oleh tes. Logikanya sama persis dengan versi bertahap karena
+        // keduanya memanggil service yang sama.
+        do {
+            $batch = $importer->processBatch($copy, $offset, $auto);
 
-        try {
-            while (($line = fgetcsv($handle)) !== false) {
-                $row++;
+            $created += $batch['created'];
+            $skipped = array_merge($skipped, $batch['skipped']);
+            $credentials = array_merge($credentials, $batch['credentials']);
+            $offset += $batch['processed'];
+        } while (! $batch['done'] && $batch['processed'] > 0);
 
-                if ($line === [null] || count(array_filter($line, fn ($v) => $v !== null && $v !== '')) === 0) {
-                    continue;
-                }
-
-                // Urutan kolom sesuai template: NIM, Nama, Jurusan, Email, Kode Gugus
-                [$nim, $name, $major, $email, $groupCode] = array_pad($line, 5, null);
-
-                $nim = trim((string) $nim);
-                $name = trim((string) $name);
-
-                if ($nim === '' || $name === '') {
-                    $skipped[] = "Baris {$row}: NIM atau nama kosong";
-
-                    continue;
-                }
-
-                if (User::query()->where('nim', $nim)->exists()) {
-                    $skipped[] = "Baris {$row}: NIM {$nim} sudah terdaftar";
-
-                    continue;
-                }
-
-                $group = filled($groupCode)
-                    ? Group::query()
-                        ->where(fn ($g) => $g->where('invitation_code', trim((string) $groupCode))
-                            ->orWhere('code', trim((string) $groupCode))
-                            ->orWhere('name', trim((string) $groupCode)))
-                        ->first()
-                    : null;
-
-                // Kode gugus yang tidak dikenal tidak boleh membuat mahasiswa
-                // masuk tanpa gugus secara diam-diam — laporkan agar panitia
-                // bisa memperbaiki CSV-nya.
-                if (filled($groupCode) && $group === null) {
-                    $skipped[] = "Baris {$row}: gugus \"".trim((string) $groupCode).'" tidak ditemukan';
-                }
-
-                $plainPassword = $autoPassword ? Str::password(10) : 'password';
-
-                User::create([
-                    'nim' => $nim,
-                    'name' => $name,
-                    'email' => filled($email) ? trim((string) $email) : $nim.'@students.umk.ac.id',
-                    'password' => Hash::make($plainPassword),
-                    'role' => UserRole::Student,
-                    // Fakultas diturunkan dari jurusan lewat config, bukan
-                    // di-hardcode: OspekQuest dipakai satu universitas dengan
-                    // 6 fakultas, bukan hanya Fakultas Teknik.
-                    'faculty' => $this->facultyFor($major),
-                    'major' => $this->normalizeMajor($major),
-                    'group_id' => $group?->id,
-                    'group_name' => $group?->name,
-                    'mentor_name' => $group?->mentor_name,
-                    'xp' => 0,
-                    'level' => 1,
-                ]);
-
-                $credentials[] = [
-                    'nim' => $nim,
-                    'name' => $name,
-                    'password' => $plainPassword,
-                ];
-
-                $created++;
-            }
-
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            fclose($handle);
-
-            return back()->withErrors(['file' => 'Import gagal: '.$e->getMessage()]);
-        }
-
-        fclose($handle);
+        @unlink($copy);
 
         return back()->with('toast', [
             'title' => 'Import selesai',
-            'message' => $created.' akun dibuat'.($skipped === [] ? '.' : ', '.count($skipped).' baris dilewati.'),
+            'message' => $created.' dari '.$total.' baris dibuat'
+                .($skipped === [] ? '.' : ', '.count($skipped).' baris bermasalah.'),
             'icon' => 'check',
             'tone' => $skipped === [] ? 'success' : 'warning',
         ])->with('import_skipped', array_slice($skipped, 0, 15))
             // Ditampilkan SEKALI di halaman admin dalam bentuk CSV agar panitia
             // bisa mencetak/membagikan. Tidak pernah disimpan plaintext di DB.
             ->with('import_credentials', array_slice($credentials, 0, 1200));
+    }
+
+    /**
+     * Langkah 1 import bertahap: simpan berkas, kembalikan total baris.
+     *
+     * Tanpa queue worker, progres NYATA hanya bisa didapat dengan memecah
+     * pekerjaan menjadi batch yang diminta klien berulang.
+     */
+    public function importInit(Request $request, StudentImportService $importer): JsonResponse
+    {
+        abort_unless($request->user()->role->canManageAccounts(), 403);
+
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,txt', 'max:25600'],
+            'auto_generate_password' => ['nullable', 'boolean'],
+        ]);
+
+        $id = (string) Str::uuid();
+        $dir = storage_path('app/imports');
+
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $request->file('file')->move($dir, $id.'.csv');
+
+        $absolute = $dir.DIRECTORY_SEPARATOR.$id.'.csv';
+        $total = $importer->countRows($absolute);
+
+        if ($total === 0) {
+            @unlink($absolute);
+
+            return response()->json([
+                'ok' => false,
+                'message' => 'Berkas tidak berisi baris data. Periksa header CSV.',
+            ], 422);
+        }
+
+        // Metadata di session: admin hanya mengurus berkasnya sendiri, dan ini
+        // mencegah orang lain memakai import_id yang sama.
+        $request->session()->put('import.'.$id, [
+            'auto_password' => $request->boolean('auto_generate_password'),
+            'total' => $total,
+            'offset' => 0,
+            'created' => 0,
+            'skipped' => [],
+            'credentials' => [],
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'import_id' => $id,
+            'total' => $total,
+            'batch_size' => StudentImportService::MAX_ROWS_PER_BATCH,
+            'time_budget_ms' => (int) (StudentImportService::TIME_BUDGET_SECONDS * 1000),
+        ]);
+    }
+
+    /**
+     * Langkah 2 import bertahap: proses satu batch, kembalikan progres.
+     */
+    public function importBatch(Request $request, string $importId, StudentImportService $importer): JsonResponse
+    {
+        abort_unless($request->user()->role->canManageAccounts(), 403);
+
+        $state = $request->session()->get('import.'.$importId);
+
+        if ($state === null) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Sesi import hilang atau kedaluwarsa. Ulangi dari awal.',
+            ], 404);
+        }
+
+        $absolute = storage_path('app/imports'.DIRECTORY_SEPARATOR.$importId.'.csv');
+
+        if (! is_file($absolute)) {
+            $request->session()->forget('import.'.$importId);
+
+            return response()->json([
+                'ok' => false,
+                'message' => 'Berkas import hilang. Ulangi dari awal.',
+            ], 404);
+        }
+
+        $batch = $importer->processBatch(
+            $absolute,
+            (int) $state['offset'],
+            (bool) $state['auto_password'],
+        );
+
+        $state['offset'] += $batch['processed'];
+        $state['created'] += $batch['created'];
+        $state['skipped'] = array_merge($state['skipped'], $batch['skipped']);
+        $state['credentials'] = array_merge($state['credentials'], $batch['credentials']);
+
+        $request->session()->put('import.'.$importId, $state);
+
+        return response()->json([
+            'ok' => true,
+            'processed' => $state['offset'],
+            'created' => $state['created'],
+            'skipped' => count($state['skipped']),
+            'total' => $state['total'],
+            'done' => $batch['done'],
+            'credentials' => array_slice($batch['credentials'], 0, 200),
+            'skipped_rows' => array_slice($batch['skipped'], 0, 10),
+        ]);
     }
 
     /**

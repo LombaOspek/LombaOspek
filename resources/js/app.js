@@ -7,6 +7,7 @@
 
 import { initEngagement } from './engagement.js';
 import { initRewardStore } from './rewards.js';
+import { initImportProgress } from './import-progress.js';
 
 const prefersReducedMotion = () =>
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -184,6 +185,7 @@ export function boot() {
     // Gugus Wars dan gelar leaderboard dirender server; tidak butuh JS.
     initEngagement();
     initRewardStore();
+    initImportProgress();
 
     // Level halaman sebelumnya: dipakai untuk mendeteksi kenaikan level.
     const root = document.documentElement;

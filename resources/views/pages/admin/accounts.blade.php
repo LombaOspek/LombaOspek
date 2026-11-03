@@ -145,7 +145,15 @@
                 @endpush
             @endif
 
-            <form method="POST" action="{{ route('admin.accounts.import') }}" enctype="multipart/form-data" class="mt-3 flex flex-col gap-2.5" data-submit-lock>
+            <form
+                method="POST"
+                action="{{ route('admin.accounts.import') }}"
+                enctype="multipart/form-data"
+                class="mt-3 flex flex-col gap-2.5"
+                data-import-form
+                data-init-endpoint="{{ route('admin.accounts.import.init') }}"
+                data-batch-endpoint="{{ route('admin.accounts.import.batch', ['importId' => '__ID__']) }}"
+            >
                 @csrf
 
                 <div>
@@ -171,11 +179,62 @@
                     </span>
                 </label>
 
-                <button type="submit" class="btn btn-primary w-full">
+                <button type="submit" class="btn btn-primary w-full" data-import-submit>
                     <x-icon name="plus" class="size-4" :stroke="2.4" />
-                    Buat Akun Massal
+                    Mulai Import
                 </button>
             </form>
+
+            {{-- Panel progres: tersembunyi sampai import dimulai. --}}
+            <div data-import-progress class="mt-3 hidden rounded-sm border-2 border-ink bg-paper-dim p-3">
+                <div class="flex items-baseline justify-between gap-2">
+                    <span class="font-display text-[0.66rem] font-bold uppercase tracking-[0.08em]">Progres import</span>
+                    <span data-progress-percent class="font-mono text-[0.7rem] font-bold text-brand">0%</span>
+                </div>
+
+                <div class="mt-1.5 h-3 w-full overflow-hidden rounded-xs border-2 border-ink bg-white">
+                    <div
+                        data-progress-bar
+                        class="h-full bg-gold transition-[width] duration-200 ease-out"
+                        style="width: 0%"
+                        role="progressbar"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        aria-valuenow="0"
+                    ></div>
+                </div>
+
+                <p data-progress-count class="mt-1.5 font-mono text-[0.62rem] font-semibold text-ink-soft">0 / 0 baris</p>
+                <p data-progress-status class="mt-1 text-[0.62rem] font-medium text-ink-faint" aria-live="polite"></p>
+
+                {{-- Kredensial: hanya tampil sekali, tidak pernah disimpan plaintext. --}}
+                <div data-progress-credentials class="mt-2.5 hidden rounded-sm border-2 border-ink bg-white p-2">
+                    <p class="text-[0.62rem] font-bold text-vermilion-deep">
+                        Sandi sementara — catat atau unduh SEKARANG. Tidak bisa dilihat lagi.
+                    </p>
+                    <div class="mt-1 max-h-40 overflow-auto">
+                        <table class="w-full border-collapse text-left">
+                            <thead>
+                                <tr class="text-[0.56rem] font-bold uppercase tracking-[0.06em] text-ink-faint">
+                                    <th class="px-2 py-1">NIM</th>
+                                    <th class="px-2 py-1">Nama</th>
+                                    <th class="px-2 py-1">Sandi</th>
+                                </tr>
+                            </thead>
+                            <tbody data-progress-credential-rows></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div data-progress-skipped class="mt-2 hidden rounded-sm border-[1.5px] border-ink/30 bg-white p-2">
+                    <p class="text-[0.6rem] font-bold uppercase tracking-[0.06em] text-ink-faint">Baris bermasalah</p>
+                    <ul data-progress-skipped-rows class="mt-1 space-y-0.5"></ul>
+                </div>
+
+                <button type="button" data-progress-done class="btn btn-secondary mt-2.5 hidden w-full">
+                    Muat ulang daftar akun
+                </button>
+            </div>
         </section>
 
         {{-- Buat gugus --}}

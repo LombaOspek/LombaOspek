@@ -144,6 +144,12 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/akun', [AccountController::class, 'index'])->name('accounts');
         Route::post('/akun/gugus', [AccountController::class, 'storeGroup'])->name('groups.store');
         Route::post('/akun/import', [AccountController::class, 'bulkImport'])->name('accounts.import');
+
+        // Import bertahap: init menyimpan berkas, batch dipanggil berulang
+        // sampai done=true. Dipakai untuk progress bar nyata.
+        Route::post('/akun/import/init', [AccountController::class, 'importInit'])->name('accounts.import.init');
+        Route::post('/akun/import/{importId}/batch', [AccountController::class, 'importBatch'])
+            ->name('accounts.import.batch');
         Route::get('/akun/template', [AccountController::class, 'template'])->name('accounts.template');
         Route::post('/akun/{user}/peran', [AccountController::class, 'updateRole'])->name('accounts.role');
         Route::delete('/akun/{user}', [AccountController::class, 'destroy'])->name('accounts.destroy');
