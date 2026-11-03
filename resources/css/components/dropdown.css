@@ -1,0 +1,231 @@
+/*
+| Dropdown custom (neo-brutalist)
+|
+| <select> bawaan tidak bisa digayakan: picker-nya digambar oleh sistem
+| operasi, jadi border 2px dan bayangan solid tidak pernah muncul. Komponen
+| ini memakai button + listbox ARIA agar tampilannya konsisten di semua
+| perangkat tanpa kehilangan aksesibilitas.
+*/
+
+.dd {
+    position: relative;
+}
+
+.dd-trigger {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    border: 2px solid var(--color-ink, #111);
+    border-radius: 0.125rem;
+    background: #fff;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.74rem;
+    font-weight: 600;
+    text-align: left;
+    color: var(--color-ink, #111);
+    transition: box-shadow 120ms ease, transform 120ms ease;
+}
+
+.dd-trigger:hover:not(:disabled) {
+    background: var(--color-paper-dim, #f5f1e6);
+}
+
+.dd-trigger:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.dd-trigger:focus-visible,
+.dd[data-open] .dd-trigger {
+    outline: none;
+    box-shadow: 3px 3px 0 0 var(--color-ink, #111);
+}
+
+.dd-trigger-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Placeholder harus terbaca sebagai "belum dipilih", bukan sebagai nilai. */
+.dd-trigger-label.is-placeholder {
+    color: var(--color-ink-faint, #8a8578);
+    font-weight: 500;
+}
+
+.dd-caret {
+    transition: transform 140ms ease;
+}
+
+.dd[data-open] .dd-caret {
+    transform: rotate(180deg);
+}
+
+.dd-panel {
+    position: absolute;
+    z-index: 45;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    right: 0;
+    max-height: 16rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 2px solid var(--color-ink, #111);
+    border-radius: 0.125rem;
+    background: #fff;
+    box-shadow: 4px 4px 0 0 var(--color-ink, #111);
+}
+
+/* Dibuka ke atas bila ruang bawah tidak cukup (diatur oleh JS). */
+.dd-panel[data-drop="up"] {
+    top: auto;
+    bottom: calc(100% + 0.25rem);
+}
+
+.dd-search {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-bottom: 2px solid color-mix(in srgb, var(--color-ink, #111) 15%, transparent);
+    padding: 0.375rem 0.5rem;
+}
+
+.dd-search-input {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--color-ink, #111);
+    outline: none;
+}
+
+.dd-search-input::placeholder {
+    color: var(--color-ink-faint, #8a8578);
+    font-weight: 500;
+}
+
+.dd-options {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.25rem;
+}
+
+.dd-group {
+    padding: 0.375rem 0.5rem 0.125rem;
+    font-family: var(--font-display, inherit);
+    font-size: 0.56rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint, #8a8578);
+}
+
+.dd-option {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    border: 0;
+    border-radius: 0.125rem;
+    background: transparent;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-align: left;
+    color: var(--color-ink, #111);
+    cursor: pointer;
+}
+
+.dd-option:hover,
+.dd-option.is-active {
+    background: var(--color-paper-dim, #f5f1e6);
+}
+
+/* Pilihan aktif: latar kuning + centang, bukan hanya warna teks, supaya
+   tetap terbaca bagi pengguna dengan buta warna. */
+.dd-option.is-selected {
+    background: var(--color-gold, #f7bc29);
+}
+
+.dd-option.is-selected .dd-check {
+    opacity: 1;
+}
+
+.dd-check {
+    opacity: 0;
+    color: var(--color-ink, #111);
+}
+
+.dd-option-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dd-empty {
+    padding: 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--color-ink-faint, #8a8578);
+}
+
+.dd-option[hidden] {
+    display: none;
+}
+
+/*
+| Paginasi
+|
+| Tombol persegi dengan border tebal; halaman aktif memakai latar kuning dan
+| aria-current, bukan hanya warna teks, agar tetap jelas bagi pengguna dengan
+| gangguan penglihatan warna.
+*/
+
+.pg-btn {
+    display: inline-flex;
+    min-width: 1.75rem;
+    height: 1.75rem;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--color-ink, #111);
+    border-radius: 0.125rem;
+    background: #fff;
+    padding: 0 0.375rem;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.66rem;
+    font-weight: 700;
+    color: var(--color-ink, #111);
+    transition: box-shadow 100ms ease, transform 100ms ease;
+}
+
+a.pg-btn:hover {
+    background: var(--color-paper-dim, #f5f1e6);
+    box-shadow: 2px 2px 0 0 var(--color-ink, #111);
+    transform: translate(-1px, -1px);
+}
+
+.pg-btn-active {
+    background: var(--color-gold, #f7bc29);
+    cursor: default;
+}
+
+.pg-btn-disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+}
+
+.pg-gap {
+    display: inline-flex;
+    min-width: 1rem;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.66rem;
+    font-weight: 700;
+    color: var(--color-ink-faint, #8a8578);
+}

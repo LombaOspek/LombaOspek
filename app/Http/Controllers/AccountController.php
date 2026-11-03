@@ -46,6 +46,42 @@ class AccountController extends Controller
 
         $groups = Group::query()->withCount('members')->orderBy('name')->get();
 
+        /*
+         * Prodi dikelompokkan per fakultas untuk dropdown bergrup.
+         *
+         * Sumbernya config, bukan distinct() dari tabel users: kalau memakai
+         * data yang ada, prodi yang belum punya satu pun mahasiswa tidak akan
+         * pernah muncul di pilihan — padahal justru itu yang perlu dipilih.
+         */
+        $majorsByFaculty = collect(config('ospek.faculties', []))
+            ->map(fn (array $programs) => collect($programs)->mapWithKeys(fn ($p) => [$p => $p])->all())
+            ->all();
+
+        /*
+         * LO dikelompokkan per jurusan supaya form bisa menyaring LO yang
+         * sejurusan dengan gugus. LO tanpa jurusan tetap disertakan di semua
+         * prodi - kalau tidak, ia tidak akan pernah bisa ditugaskan.
+         */
+        $officers = User::query()
+            ->where('role', UserRole::LiaisonOfficer)
+            ->orderBy('name')
+            ->get(['id', 'name', 'nim', 'major']);
+
+        // LO yang sudah membimbing gugus TETAP ditampilkan: satu LO memang
+                // boleh membimbing beberapa gugus SEJURUSAN (jumlah LO selalu jauh
+                // lebih sedikit dari jumlah gugus). Yang dibatasi adalah lintas
+                // jurusan, bukan jumlah gugusnya.
+                $officersByMajor = [];
+
+        foreach (array_keys($majorsByFaculty) as $faculty) {
+            foreach (array_keys($majorsByFaculty[$faculty]) as $program) {
+                $officersByMajor[$program] = $officers
+                    ->filter(fn ($o) => $o->major === null || $o->major === $program)
+                    ->mapWithKeys(fn ($o) => [$o->id => $o->name.' ('.$o->nim.')'])
+                    ->all();
+            }
+        }
+
         $stats = [
             'students' => User::query()->where('role', UserRole::Student)->count(),
             'groups' => $groups->count(),
@@ -62,11 +98,10 @@ class AccountController extends Controller
             'stats' => $stats,
             'roles' => UserRole::cases(),
             'majors' => User::query()->whereNotNull('major')->distinct()->orderBy('major')->pluck('major'),
+            'majorsByFaculty' => $majorsByFaculty,
+            'officersByMajor' => $officersByMajor,
             'filters' => ['q' => $request->query('q'), 'role' => $role, 'major' => $major],
-            'availableOfficers' => User::query()
-                ->where('role', UserRole::LiaisonOfficer)
-                ->orderBy('name')
-                ->get(['id', 'name', 'nim']),
+            'availableOfficers' => $officers,
         ]);
     }
 
@@ -111,13 +146,6 @@ class AccountController extends Controller
             ])->withInput();
         }
 
-        // Satu LO = satu gugus. Kalau jurusan punya banyak gugus, pakai LO
-        // berbeda per gugus supaya beban peninjauan bukti tetap terbagi.
-        if (Group::query()->where('mentor_id', $mentor->getKey())->exists()) {
-            return back()->withErrors([
-                'mentor_id' => $mentor->name.' sudah membimbing gugus lain. Pilih LO lain untuk jurusan ini.',
-            ])->withInput();
-        }
 
         $group = Group::create([
             'name' => $validated['name'],

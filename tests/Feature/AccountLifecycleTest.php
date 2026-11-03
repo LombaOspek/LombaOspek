@@ -217,20 +217,31 @@ class AccountLifecycleTest extends TestCase
         $this->assertDatabaseMissing('groups', ['name' => 'Gugus Uji Lintas Jurusan']);
     }
 
-    public function test_a_liaison_officer_cannot_mentor_two_groups(): void
+    public function test_a_liaison_officer_may_mentor_several_groups_in_the_same_major(): void
     {
-        // LO yang sudah membimbing gugus tertentu.
+        /*
+         * Jumlah LO selalu jauh lebih sedikit daripada jumlah gugus (4 LO untuk
+         * puluhan gugus), jadi membatasi satu LO ke satu gugus akan memblokir
+         * pembuatan gugus sama sekali. Yang dibatasi adalah LINTAS JURUSAN.
+         */
         $existing = Group::query()->whereNotNull('mentor_id')->firstOrFail();
         $lo = User::query()->where('role', UserRole::LiaisonOfficer)->findOrFail($existing->mentor_id);
 
         $this->actingAs($this->admin())
             ->post('/admin/akun/gugus', [
-                'name' => 'Gugus Kedua',
+                'name' => 'Gugus Kedua Sejurusan',
                 'study_program' => $existing->study_program,
                 'mentor_id' => $lo->id,
                 'capacity' => 30,
                 'badge_color' => 'amber',
             ])
-            ->assertSessionHasErrors('mentor_id');
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            2,
+            Group::query()->where('mentor_id', $lo->id)->count(),
+            'LO harus boleh membimbing lebih dari satu gugus pada jurusan yang sama.',
+        );
     }
 }

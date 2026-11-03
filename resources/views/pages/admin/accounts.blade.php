@@ -261,39 +261,47 @@
                     @error('name')<p class="mt-1 text-[0.64rem] font-bold text-vermilion-deep">{{ $message }}</p>@enderror
                 </div>
 
+                {{-- Peta LO per prodi, dibaca major-officer.js untuk menyaring. --}}
+                <script type="application/json" data-officer-map>@json($officersByMajor)</script>
+
                 <div class="grid gap-2 sm:grid-cols-2">
                     <div>
-                        <label for="study_program" class="block font-display text-[0.66rem] font-bold uppercase tracking-[0.08em]">
-                            Program Studi <span class="text-vermilion">*</span>
-                        </label>
-                        <input
-                            type="text" id="study_program" name="study_program" required maxlength="120"
-                            list="major-list" value="{{ old('study_program', 'Sistem Informasi') }}"
-                            class="mt-1 w-full rounded-sm border-2 border-ink bg-white px-2 py-1.5 text-[0.74rem] font-semibold focus:outline-none"
-                        >
-                        <datalist id="major-list">
-                            @foreach ($majors as $major)
-                                <option value="{{ $major }}"></option>
-                            @endforeach
-                        </datalist>
+                        {{--
+                            Prodi bergrup per fakultas: panitia melihat konteks
+                            "ini prodi fakultas mana" sambil memilih, dan tidak
+                            perlu mengetik bebas (yang dulu bisa jadi "sistem
+                            informasi" huruf kecil dan tidak dikenali sistem).
+                        --}}
+                        <x-dropdown
+                            name="study_program"
+                            label="Program Studi"
+                            :options="$majorsByFaculty"
+                            :selected="old('study_program', 'Sistem Informasi')"
+                            placeholder="— Pilih program studi —"
+                            :required="true"
+                            :grouped="true"
+                            :searchable="true"
+                            data-major-select
+                        />
                     </div>
 
                     <div>
-                        <label for="mentor_id" class="block font-display text-[0.66rem] font-bold uppercase tracking-[0.08em]">
-                            LO Utama <span class="text-vermilion">*</span>
-                        </label>
-                        <select
-                            id="mentor_id" name="mentor_id" required
-                            class="mt-1 w-full rounded-sm border-2 border-ink bg-white px-2 py-1.5 text-[0.74rem] font-semibold focus:outline-none"
-                        >
-                            <option value="">— Pilih LO —</option>
-                            @foreach ($availableOfficers as $officer)
-                                <option value="{{ $officer->id }}" @selected(old('mentor_id') == $officer->id)>
-                                    {{ $officer->name }} ({{ $officer->nim }})
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('mentor_id')<p class="mt-1 text-[0.64rem] font-bold text-vermilion-deep">{{ $message }}</p>@enderror
+                        {{--
+                            LO disaring mengikuti prodi yang dipilih: aturan
+                            "satu LO satu jurusan" ditegakkan di sini juga,
+                            bukan hanya di server, supaya panitia tidak memilih
+                            pasangan yang pasti ditolak.
+                        --}}
+                        <x-dropdown
+                            name="mentor_id"
+                            label="LO Utama"
+                            :options="$officersByMajor[old('study_program', 'Sistem Informasi')] ?? []"
+                            :selected="old('mentor_id')"
+                            placeholder="— Pilih LO —"
+                            :required="true"
+                            hint="Hanya LO dari program studi yang sama."
+                            data-mentor-select
+                        />
                     </div>
 
                     <div>
@@ -305,15 +313,13 @@
                     </div>
 
                     <div>
-                        <label for="badge_color" class="block font-display text-[0.66rem] font-bold uppercase tracking-[0.08em]">Warna Lencana</label>
-                        <select
-                            id="badge_color" name="badge_color"
-                            class="mt-1 w-full rounded-sm border-2 border-ink bg-white px-2 py-1.5 text-[0.74rem] font-semibold focus:outline-none"
-                        >
-                            @foreach (['amber' => 'Kuning Amber', 'teal' => 'Hijau Teal', 'sky' => 'Biru Langit', 'vermilion' => 'Merah Bata'] as $val => $label)
-                                <option value="{{ $val }}" @selected(old('badge_color') === $val)>{{ $label }}</option>
-                            @endforeach
-                        </select>
+                        <x-dropdown
+                            name="badge_color"
+                            label="Warna Lencana"
+                            :options="['amber' => 'Kuning Amber', 'teal' => 'Hijau Teal', 'sky' => 'Biru Langit', 'vermilion' => 'Merah Bata']"
+                            :selected="old('badge_color', 'amber')"
+                            placeholder="— Pilih warna —"
+                        />
                     </div>
                 </div>
 
@@ -358,18 +364,23 @@
                     placeholder="Cari nama, NIM, email…"
                     class="w-44 rounded-sm border-2 border-ink bg-white px-2 py-1 text-[0.7rem] font-semibold focus:outline-none sm:w-56"
                 >
-                <select name="role" class="rounded-sm border-2 border-ink bg-white px-2 py-1 text-[0.7rem] font-semibold focus:outline-none">
-                    <option value="">Semua peran</option>
-                    @foreach ($roles as $role)
-                        <option value="{{ $role->value }}" @selected($filters['role'] === $role->value)>{{ $role->label() }}</option>
-                    @endforeach
-                </select>
-                <select name="major" class="rounded-sm border-2 border-ink bg-white px-2 py-1 text-[0.7rem] font-semibold focus:outline-none">
-                    <option value="">Semua jurusan</option>
-                    @foreach ($majors as $major)
-                        <option value="{{ $major }}" @selected($filters['major'] === $major)>{{ $major }}</option>
-                    @endforeach
-                </select>
+                <div class="w-36">
+                    <x-dropdown
+                        name="role"
+                        :options="collect($roles)->mapWithKeys(fn ($r) => [$r->value => $r->label()])->all()"
+                        :selected="$filters['role']"
+                        placeholder="Semua peran"
+                    />
+                </div>
+                <div class="w-44">
+                    <x-dropdown
+                        name="major"
+                        :options="collect($majors)->mapWithKeys(fn ($m) => [$m => $m])->all()"
+                        :selected="$filters['major']"
+                        placeholder="Semua jurusan"
+                        :searchable="true"
+                    />
+                </div>
                 <button type="submit" class="btn btn-ghost btn-sm">
                     <x-icon name="search" class="size-3.5" :stroke="2.2" />
                     Filter
@@ -483,7 +494,7 @@
 
         @if ($users->hasPages())
             <div class="border-t-2 border-ink/10 p-3">
-                {{ $users->links() }}
+                <x-pagination :paginator="$users" label="akun" />
             </div>
         @endif
     </section>

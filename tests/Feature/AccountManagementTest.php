@@ -179,9 +179,8 @@ class AccountManagementTest extends TestCase
 
     public function test_admin_can_create_a_group_and_officer_is_moved_into_it(): void
     {
-        // Seeder sudah menugaskan setiap LO ke satu gugus, dan aturan baru
-        // menegakkan "satu LO = satu gugus". Jadi tes ini memakai LO baru
-        // yang belum membimbing apa pun, dengan jurusan yang cocok.
+        // Memakai LO baru supaya tes ini tidak bergantung pada penugasan
+        // seeder - bukan karena LO yang sudah membimbing gugus dilarang.
         $officer = User::create([
             'nim' => 'LO-2024-777',
             'name' => 'Kak Uji Baru',
