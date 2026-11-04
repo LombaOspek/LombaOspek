@@ -65,9 +65,9 @@
                             {{-- Gambar hadiah: kalau tidak ada, tampilkan blok warna
                                  dengan inisial, bukan gambar rusak. --}}
                             <div class="relative flex h-24 items-center justify-center overflow-hidden rounded-t-[6px] border-b-2 border-ink bg-brand-soft">
-                                @if ($reward->image_path)
+                                @if ($reward->image_url)
                                     <img
-                                        src="{{ asset($reward->image_path) }}"
+                                        src="{{ $reward->image_url }}"
                                         alt=""
                                         class="size-full object-cover"
                                         loading="lazy"

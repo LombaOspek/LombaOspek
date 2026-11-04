@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Hadiah yang bisa ditukar dengan koin.
@@ -44,6 +45,38 @@ class Reward extends Model
     public function redemptions(): HasMany
     {
         return $this->hasMany(RewardRedemption::class);
+    }
+
+    /**
+     * URL gambar hadiah yang bisa dipakai langsung di <img src>.
+     *
+     * `image_path` menyimpan path RELATIF terhadap disk public
+     * ("rewards/foo.jpg"), bukan path publik. Memakainya dengan asset()
+     * menghasilkan "/rewards/foo.jpg" yang 404 — berkas aslinya ada di
+     * "/storage/rewards/foo.jpg". Accessor ini menutup celah itu supaya
+     * view tidak perlu tahu detail disk, dan tidak ada view yang bisa
+     * menyimpang lagi.
+     *
+     * Mengembalikan null kalau tidak ada gambar, sehingga Blade cukup
+     * memeriksa satu nilai untuk memilih antara <img> dan blok inisial.
+     */
+    public function getImageUrlAttribute(): ?string
+    {
+        if (! $this->image_path) {
+            return null;
+        }
+
+        /*
+         * URL RELATIF, bukan absolut lewat Storage::url().
+         *
+         * Storage::url() memakai APP_URL dari config. Di proyek ini
+         * APP_URL=http://localhost:8000 sementara server dev berjalan di
+         * port lain, sehingga src menunjuk port yang salah: gambar tampil
+         * hanya kalau kebetulan ada server di port itu, dan rusak di hosting
+         * yang domainnya berbeda. Path relatif selalu benar pada dokumen yang
+         * memuatnya — dev, port berapa pun, subfolder, maupun produksi.
+         */
+        return '/storage/'.ltrim($this->image_path, '/');
     }
 
     /**

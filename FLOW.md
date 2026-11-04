@@ -1666,3 +1666,55 @@ benar (16/32/64/180 px); dengan cache kosong browser benar-benar mengambil
 
 **Catatan tes:** `assertFileExists` **lolos untuk berkas 0 byte** — itulah
 persis bug aslinya. Asersi harus juga memeriksa `filesize() > 100`.
+
+
+### 14.25 Bug: gambar hadiah Bursa tidak tampil
+
+**Gejala:** operator mengunggah gambar lanyard lewat `/admin/bursa`; unggahan
+dinyatakan berhasil (toast muncul, file ada di disk, `image_path` terisi), tetapi
+kartu di Bursa menampilkan **ikon gambar rusak** — bukan gambar.
+
+**Akar masalah (dua lapis):**
+
+1. **Salah URL, bukan salah simpan.** `ImageController` menyimpan
+   `image_path = "rewards/foo.jpg"` — path relatif terhadap **disk** public.
+   View mahasiswa memakainya dengan `asset()`, menghasilkan
+   `/rewards/foo.jpg` → **404**. Berkas aslinya ada di
+   `/storage/rewards/foo.jpg`. Upload-nya tidak pernah bermasalah; hanya cara
+   menampilkannya.
+
+2. **URL absolut mengikuti APP_URL yang salah.** Halaman admin memakai
+   `Storage::disk('public')->url()` yang mengembalikan URL **absolut** dari
+   `APP_URL`. Proyek ini punya `APP_URL=http://localhost:8000` sementara server
+   dev berjalan di port lain, sehingga `src` menunjuk port yang salah. Di mesin
+   pengembang gambar masih muncul kalau kebetulan ada server di port itu; di
+   hosting dengan domain berbeda, gambar **pasti** rusak.
+
+**Perbaikan:** satu accessor `Reward::image_url` menjadi satu-satunya sumber
+kebenaran, dan mengembalikan **URL relatif** (`/storage/...`). Dua view memakainya
+(`pages/rewards.blade.php` untuk mahasiswa, `pages/admin/rewards.blade.php` untuk
+admin), jadi tidak ada lagi tempat yang bisa menyimpang.
+
+URL relatif dipilih, bukan absolut: selalu benar pada dokumen yang memuatnya —
+dev, port berapa pun, subfolder, maupun produksi.
+
+**Verifikasi tiga lapis:**
+
+| Lapis | Tes | Hasil |
+|---|---|---|
+| Unit | `tests/Unit/RewardImageUrlTest.php` (5) | accessor: null, mapping, relatif, slash ganda, bukan bare path |
+| Integrasi | `tests/Feature/RewardImageUploadTest.php` (8) | upload → simpan → render URL benar; ganti gambar menghapus file lama; tolak PDF & >2 MB; hanya admin |
+| E2E nyata | `e2e-reward.mjs` (browser CDP) | isi form → `DOM.setFileInputFiles` → submit → buka `/bursa` → gambar `naturalWidth 447`, HTTP 200, 18.720 B, `brokenImages: []` |
+
+Tes integrasi sengaja **berakhir dengan permintaan HTTP ke URL gambar**, bukan
+hanya memeriksa `image_path`. Tes lama lolos meski aplikasi menampilkan gambar
+rusak, karena masalahnya bukan di penyimpanan melainkan di URL yang dirender.
+
+**Sisir seluruh aplikasi:** 14 halaman + 16 tautan sidebar. Hasil: **0 gambar
+rusak, 0 error JS, 0 tautan mati**. Alur bukti anti-curang (`proof_path`) sudah
+benar sejak awal — memakai route `lo.proof`, bukan `asset()`.
+
+**Catatan:** tiga "404" pada sisir pertama ternyata **skrip uji yang salah URL**
+(`/sertifikat` seharusnya `/sijil`, `/admin/quest-builder` seharusnya
+`/admin/misi`). Selalu ambil daftar route dari `php artisan route:list`, jangan
+menebak dari nama halaman.

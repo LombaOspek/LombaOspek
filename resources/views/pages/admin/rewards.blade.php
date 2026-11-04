@@ -60,9 +60,9 @@
                             <tr class="transition hover:bg-paper-dim/60 {{ $reward->is_active ? '' : 'opacity-60' }}">
                                 <td class="px-3 py-2">
                                     <div class="flex items-center gap-2">
-                                        @if ($reward->image_path)
+                                        @if ($reward->image_url)
                                             <img
-                                                src="{{ Storage::disk('public')->url($reward->image_path) }}"
+                                                src="{{ $reward->image_url }}"
                                                 alt=""
                                                 class="size-9 shrink-0 rounded-xs border-2 border-ink object-cover"
                                                 loading="lazy"
