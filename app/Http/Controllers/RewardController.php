@@ -73,6 +73,31 @@ class RewardController extends Controller
      * fetch JSON dari modal. Klien tidak pernah mengirim harga — hanya id
      * hadiah, dan server yang menentukan biayanya.
      */
+    /**
+     * Halaman yang terbuka saat panitia memindai QR klaim.
+     *
+     * Sengaja PUBLIK (di luar `auth`): panitia di meja penyerahan sering tidak
+     * login, dan memaksa mereka masuk dulu membuat antrean berhenti. Yang
+     * ditampilkan hanya yang memang tertempel di kartu fisik: nama pemilik,
+     * hadiah, dan status. Kode klaim lengkap tidak dicetak ulang di sini supaya
+     * URL yang bocor tidak bisa dipakai menebak kode lain.
+     */
+    public function verifyClaim(string $code): View
+    {
+        $redemption = RewardRedemption::query()
+            ->with(['reward', 'user'])
+            ->where('claim_code', strtoupper(trim($code)))
+            ->first();
+
+        return view('pages.claim-verify', [
+            'code' => strtoupper(trim($code)),
+            'redemption' => $redemption,
+            'reward' => $redemption?->reward,
+            'owner' => $redemption?->user,
+            'isValid' => $redemption !== null,
+        ]);
+    }
+
     public function redeem(Request $request, Reward $reward): RedirectResponse|JsonResponse
     {
         /** @var User $user */

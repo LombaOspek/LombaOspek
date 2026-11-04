@@ -12,6 +12,7 @@ import { initDropdowns } from './dropdown.js';
 import { initMajorOfficerLink } from './major-officer.js';
 import { initAccountActions } from './account-actions.js';
 import { initAjaxPagination } from './ajax-pagination.js';
+import { initClaimScanner } from './claim-scanner.js';
 
 const prefersReducedMotion = () =>
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -194,6 +195,7 @@ export function boot() {
     initMajorOfficerLink();
     initAccountActions();
     initAjaxPagination();
+    initClaimScanner();
 
     // Level halaman sebelumnya: dipakai untuk mendeteksi kenaikan level.
     const root = document.documentElement;

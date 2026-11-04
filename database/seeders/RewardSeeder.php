@@ -110,5 +110,40 @@ class RewardSeeder extends Seeder
                 $reward + ['is_active' => true],
             );
         }
+
+        $this->attachCatalogImages();
+    }
+
+    /**
+     * Pasang gambar katalog untuk hadiah yang belum punya.
+     *
+     * Migrasi `attach_reward_images` tidak bisa diandalkan sendirian: pada
+     * `migrate:fresh` ia berjalan SEBELUM ada baris hadiah, sehingga meng-update
+     * nol baris dan setiap hadiah kembali tanpa gambar. Seeder yang menanggung
+     * ini karena ia berjalan setelah barisnya ada.
+     *
+     * Hanya mengisi yang KOSONG: gambar yang sudah diganti panitia lewat panel
+     * admin tidak boleh ditimpa setiap kali seeder dijalankan.
+     */
+    private function attachCatalogImages(): void
+    {
+        $images = [
+            'LANYARD-01' => 'rewards/lanyard-01.jpg',
+            'LANYARD-02' => 'rewards/lanyard-02.jpg',
+            'PIN-01' => 'rewards/pin-01.jpg',
+            'STIKER-01' => 'rewards/stiker-01.jpg',
+            'MUG-01' => 'rewards/mug-01.jpg',
+            'TOTE-01' => 'rewards/tote-01.jpg',
+            'KAOS-01' => 'rewards/kaos-01.jpg',
+            'VOUCHER-KANTIN' => 'rewards/voucher-kantin.jpg',
+            'PULSA-10K' => 'rewards/pulsa-10k.jpg',
+        ];
+
+        foreach ($images as $code => $path) {
+            Reward::query()
+                ->where('code', $code)
+                ->whereNull('image_path')
+                ->update(['image_path' => $path]);
+        }
     }
 }

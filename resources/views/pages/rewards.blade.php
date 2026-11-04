@@ -64,12 +64,22 @@
                         >
                             {{-- Gambar hadiah: kalau tidak ada, tampilkan blok warna
                                  dengan inisial, bukan gambar rusak. --}}
-                            <div class="relative flex h-24 items-center justify-center overflow-hidden rounded-t-[6px] border-b-2 border-ink bg-brand-soft">
+                            {{--
+                                object-contain, bukan object-cover.
+
+                                Gambar katalog adalah gambar produk UTUH (lanyard,
+                                mug, kaos). object-cover pada kotak 6rem memotong
+                                sisi-sisinya sehingga yang terlihat hanya sepotong
+                                bahan - mahasiswa tidak bisa menilai barangnya.
+                                Wadah ditinggikan dan diberi padding agar seluruh
+                                produk masuk tanpa terpotong.
+                            --}}
+                            <div class="relative flex h-32 items-center justify-center overflow-hidden rounded-t-[6px] border-b-2 border-ink bg-brand-soft p-1.5">
                                 @if ($reward->image_url)
                                     <img
                                         src="{{ $reward->image_url }}"
-                                        alt=""
-                                        class="size-full object-cover"
+                                        alt="{{ $reward->name }}"
+                                        class="size-full object-contain"
                                         loading="lazy"
                                     >
                                 @else
@@ -181,6 +191,30 @@
                                     </p>
                                     <span class="stamp shrink-0 {{ $tone }} text-[0.5rem]">{{ $label }}</span>
                                 </div>
+
+                                {{--
+                                    QR ditampilkan untuk klaim yang belum diserahkan saja.
+                                    Menampilkan QR klaim yang sudah diambil mengundang
+                                    panitia memindainya ulang dan bingung melihat status.
+                                    Kode teks tetap ada di bawah: ponsel bisa mati atau
+                                    kamera gagal fokus, dan panitia tetap harus bisa
+                                    menyerahkan hadiah tanpa jaringan.
+                                --}}
+                                @if ($redemption->isPending())
+                                    <div class="mt-2 flex items-center gap-2.5">
+                                        <img
+                                            src="{{ $redemption->qr_data_uri }}"
+                                            alt="QR klaim {{ $redemption->claim_code }}"
+                                            class="size-[4.5rem] shrink-0 rounded-xs border-2 border-ink bg-paper"
+                                            loading="lazy"
+                                        >
+                                        <p class="text-[0.58rem] font-semibold leading-snug text-ink-soft">
+                                            Tunjukkan QR ini ke panitia. Mereka memindainya untuk
+                                            melihat status klaim Anda.
+                                        </p>
+                                    </div>
+                                @endif
+
                                 <p class="mt-1 font-mono text-[0.68rem] font-bold tracking-wider text-ink">
                                     {{ $redemption->claim_code }}
                                 </p>

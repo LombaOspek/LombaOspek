@@ -24,6 +24,11 @@ class DatabaseSeeder extends Seeder
         $this->call([
             GroupSeeder::class,
             QuestSeeder::class,
+
+            // Setelah QuestSeeder: agenda menautkan `quest_id` ke modul, jadi
+            // katalog modul harus ada lebih dulu.
+            OrientationScheduleSeeder::class,
+
             SideQuestSeeder::class,
             QuizQuestionSeeder::class,
             AchievementSeeder::class,

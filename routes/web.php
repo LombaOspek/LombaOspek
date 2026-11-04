@@ -197,3 +197,15 @@ Route::middleware(['auth', 'role:admin'])
 */
 
 Route::get('/verifikasi/{code?}', [CertificateController::class, 'verify'])->name('certificate.verify');
+
+/*
+ * Verifikasi klaim hadiah lewat QR.
+ *
+ * PUBLIK dengan sengaja: panitia memindai QR mahasiswa di meja penyerahan dan
+ * harus langsung melihat statusnya. Memaksa login lebih dulu menghentikan
+ * antrean. Yang ditampilkan hanya yang memang tertempel di kartu fisik -
+ * nama, hadiah, status - bukan daftar klaim atau data mahasiswa lain.
+ */
+Route::get('/klaim/{code}', [RewardController::class, 'verifyClaim'])
+    ->middleware('throttle:60,1')
+    ->name('rewards.claim-verify');

@@ -215,6 +215,67 @@
         </section>
     </div>
 
+    {{--
+        Pemindai QR untuk meja penyerahan.
+
+        Panitia memegang laptop yang menampilkan daftar klaim; mengeluarkan HP
+        untuk memindai lalu mencari barisnya lagi membuat antrean. Panel ini
+        memangkasnya jadi satu langkah. Input kode manual tetap ada karena
+        kamera bisa gagal fokus dan BarcodeDetector tidak ada di semua browser.
+    --}}
+    <section
+        data-claim-scanner
+        class="rounded-lg border-2 border-ink bg-paper shadow-[var(--shadow-flat)]"
+    >
+        <div class="p-4 pb-3">
+            <x-panel-header title="Pindai QR Klaim" subtitle="Arahkan QR mahasiswa ke kamera" icon="search" />
+        </div>
+
+        <div class="border-t-2 border-ink/10 p-4">
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" data-scanner-open class="btn btn-brand btn-sm">
+                    <x-icon name="search" class="size-3.5" :stroke="2.4" />
+                    Buka kamera
+                </button>
+
+                <button type="button" data-scanner-close hidden class="btn btn-ghost btn-sm">
+                    Hentikan kamera
+                </button>
+
+                <p
+                    data-scanner-status
+                    class="text-[0.66rem] font-semibold text-ink-faint"
+                    aria-live="polite"
+                ></p>
+            </div>
+
+            <video
+                data-scanner-video
+                hidden
+                muted
+                playsinline
+                class="mt-3 w-full max-w-sm rounded-sm border-2 border-ink bg-ink"
+            ></video>
+
+            <form data-scanner-manual class="mt-3 flex flex-wrap items-end gap-2">
+                <label class="min-w-0 flex-1">
+                    <span class="mb-1 block text-[0.6rem] font-extrabold uppercase tracking-[0.1em] text-ink-faint">
+                        Atau masukkan kode manual
+                    </span>
+                    <input
+                        type="text"
+                        data-scanner-code
+                        placeholder="OQ-QRRF-Z6UT"
+                        autocomplete="off"
+                        spellcheck="false"
+                        class="w-full rounded-sm border-2 border-ink bg-paper px-2.5 py-1.5 font-mono text-[0.72rem] font-bold uppercase tracking-wider focus:outline-none focus-visible:outline-3 focus-visible:outline-vermilion"
+                    >
+                </label>
+                <button type="submit" class="btn btn-ghost btn-sm">Periksa</button>
+            </form>
+        </div>
+    </section>
+
     {{-- Klaim terbaru + penyerahan --}}
     <section class="rounded-lg border-2 border-ink bg-paper shadow-[var(--shadow-flat)]">
         <div class="p-4 pb-3">
@@ -235,7 +296,28 @@
                 <tbody class="divide-y-2 divide-ink/10">
                     @forelse ($claims as $claim)
                         <tr class="transition hover:bg-paper-dim/60">
-                            <td class="px-3 py-2 font-mono text-[0.66rem] font-bold">{{ $claim->claim_code }}</td>
+                            <td class="px-3 py-2">
+                                <div class="flex items-center gap-2">
+                                    {{-- Panitia memindai QR mahasiswa; QR di sini adalah
+                                         salinan untuk dicetak/ditunjukkan bila mahasiswa
+                                         lupa membawa layar klaimnya. --}}
+                                    @if ($claim->status === 'pending')
+                                        <img
+                                            src="{{ $claim->qr_data_uri }}"
+                                            alt="QR {{ $claim->claim_code }}"
+                                            class="size-10 shrink-0 rounded-xs border-2 border-ink bg-paper"
+                                            loading="lazy"
+                                        >
+                                    @endif
+                                    <a
+                                        href="{{ $claim->verify_url }}"
+                                        target="_blank"
+                                        rel="noopener"
+                                        class="font-mono text-[0.66rem] font-bold underline decoration-dotted underline-offset-2 hover:text-brand-deep"
+                                        title="Buka halaman verifikasi klaim"
+                                    >{{ $claim->claim_code }}</a>
+                                </div>
+                            </td>
                             <td class="px-3 py-2">
                                 <span class="block text-[0.7rem] font-bold leading-tight">{{ $claim->user?->name ?? '—' }}</span>
                                 <span class="block text-[0.56rem] font-medium text-ink-faint">{{ $claim->user?->group_name ?? 'tanpa gugus' }}</span>

@@ -1775,3 +1775,61 @@ Saldo awal diberikan **lewat ledger** (`XpService`/`CoinService`), bukan dengan
 **Catatan tes:** ekspektasi awal saya "LO mendarat di `/lo/verifikasi`" **salah** —
 `AuthController` memakai `route('dashboard')` untuk semua peran. Itu ekspektasi
 tes yang keliru, bukan bug aplikasi; asersinya diperbaiki.
+
+
+### 14.27 Gambar katalog Bursa Hadiah
+
+**Temuan:** 8 dari 9 hadiah tidak punya gambar; kartu hanya menampilkan dua
+huruf inisial. Katalog merchandise tanpa gambar tidak menjual apa pun —
+mahasiswa tidak tahu apa yang ditukarnya.
+
+**Kenapa tidak memakai foto stok.** Semua foto bebas-royalti yang tersedia
+membawa merek pihak lain: rak penuh karakter Sanrio, tas bertuliskan
+"Wm. J. Mills & Co.", kaos Wikipedia, kartu hadiah "SM". Menempelkan logo UMK
+di atasnya justru memperburuk — karya kompetisi akan memamerkan merek orang
+lain sebagai merchandise kampus.
+
+**Keputusan: digambar sendiri** (`mkrewards.py`), gaya flat neo-brutalist —
+garis tinta tebal, warna datar palet WIRA, tanpa gradien. Satu keluarga visual
+dengan UI, dan branding UMK/MCC adalah bagian gambarnya, bukan tempelan.
+
+| Hadiah | Gambar |
+|---|---|
+| Lanyard OspekQuest | tali biru + kartu ID berlambang UMK |
+| Lanyard MCC | tali merah bata + label "MCC" (pembeda dari lanyard biasa) |
+| Pin Enamel WIRA | badge bulat, "UMK · MURIA KUDUS · 2026" |
+| Paket Stiker | lembar 2×2 dengan sudut mengelupas (penanda lembaran stiker) |
+| Mug Keramik | pita biru "UNIVERSITAS MURIA KUDUS" + lambang |
+| Tote Bag | kanvas + lambang besar + "SMART ECOSYSTEMS · 2026" |
+| Kaos Orientasi | sablon lambang + "PKKMB UMK 2026" |
+| Voucher Kantin | kartu kuning berperforasi, nominal Rp15.000 |
+| Pulsa Digital | ponsel + kartu nominal + ikon sinyal |
+
+**Tiga cacat yang ditemukan lewat pemeriksaan visual, bukan diasumsikan:**
+
+1. **Teks meluber keluar objek.** Font 6 unit pada badan mug 46 unit terlihat
+   benar di kode tetapi melebar melewati tepi. Diperbaiki dengan helper
+   `text_fit()` yang **mengukur teks terhadap lebar objek** dan mengecilkan
+   font sampai muat — bukan menebak dari ukuran font.
+2. **Lambang hanya terbaca "M".** Teks `0,62 × radius` melebar sampai tertutup
+   cincin kuning. Sekarang diukur terhadap diameter dalam cincin (1,15 × r).
+3. **`object-cover` memotong produk.** Wadah 6 rem memotong sisi lanyard, mug,
+   dan kaos sehingga yang terlihat hanya sepotong bahan. Diganti
+   `object-contain`, wadah ditinggikan ke 8 rem, dan diberi padding.
+
+**Bug migrasi yang ditemukan lewat tes:** `RefreshDatabase` menjalankan migrasi
+**sebelum** ada baris hadiah, sehingga migrasi `attach_reward_images`
+meng-update **nol baris** dan setiap hadiah kembali tanpa gambar. Gambar kini
+dipasang di `RewardSeeder::attachCatalogImages()` yang berjalan setelah barisnya
+ada, dan hanya mengisi yang **kosong** supaya gambar yang diganti panitia lewat
+panel admin tidak tertimpa setiap kali seeder dijalankan.
+
+**Data uji dibersihkan:** `LANYARD-02` sebelumnya bernama "lanyard mcc" dengan
+deskripsi "test" — sekarang "Lanyard Muria Computing Club" dengan deskripsi
+yang layak katalog.
+
+**Verifikasi:** `RewardCatalogImageTest` (6 tes / 84 assertions) — semua hadiah
+bergambar, file benar-benar ada, gambar valid ≥400px dan persegi, `object-contain`,
+tidak ada teks uji, dan semua gambar terender di `/bursa`. E2E browser:
+**9/9 gambar HTTP 200, 900×900, tidak ada yang rusak** di `/bursa` maupun
+`/admin/bursa`.
