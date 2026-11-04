@@ -84,10 +84,11 @@
                                 >{{ $ticket->reply }}</textarea>
 
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <select name="status" class="rounded-sm border-2 border-ink bg-white px-2 py-1 text-[0.7rem] font-semibold focus:outline-none">
-                                        <option value="answered" @selected($status === \App\Enums\TicketStatus::Answered)>Sudah dijawab</option>
-                                        <option value="resolved" @selected($status === \App\Enums\TicketStatus::Resolved)>Tandai selesai</option>
-                                    </select>
+                                    <x-dropdown
+                                        name="status"
+                                        :options="['answered' => 'Sudah dijawab', 'resolved' => 'Tandai selesai']"
+                                        :selected="$status->value"
+                                    />
                                     <button type="submit" class="btn btn-primary btn-sm">
                                         <x-icon name="send" class="size-3.5" :stroke="2" />
                                         Kirim balasan

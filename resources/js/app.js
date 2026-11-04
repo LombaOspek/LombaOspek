@@ -13,6 +13,7 @@ import { initMajorOfficerLink } from './major-officer.js';
 import { initAccountActions } from './account-actions.js';
 import { initAjaxPagination } from './ajax-pagination.js';
 import { initClaimScanner } from './claim-scanner.js';
+import { initQuestKindToggle } from './quest-kind.js';
 
 const prefersReducedMotion = () =>
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -196,6 +197,7 @@ export function boot() {
     initAccountActions();
     initAjaxPagination();
     initClaimScanner();
+    initQuestKindToggle();
 
     // Level halaman sebelumnya: dipakai untuk mendeteksi kenaikan level.
     const root = document.documentElement;

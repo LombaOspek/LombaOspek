@@ -137,17 +137,14 @@
                                     data-submit-lock
                                 >
                                     @csrf
-                                    <select name="role" class="rounded-xs border-[1.5px] border-ink bg-white px-1.5 py-1 text-[0.66rem] font-semibold focus:outline-none">
-                                        @foreach ($roles as $role)
-                                            <option value="{{ $role->value }}" @selected($user->role === $role)>{{ $role->label() }}</option>
-                                        @endforeach
-                                    </select>
-                                    <select name="group_id" class="rounded-xs border-[1.5px] border-ink bg-white px-1.5 py-1 text-[0.66rem] font-semibold focus:outline-none">
-                                        <option value="">— Tanpa gugus —</option>
-                                        @foreach ($groups as $group)
-                                            <option value="{{ $group->id }}" @selected($user->group_id === $group->id)>{{ $group->name }}</option>
-                                        @endforeach
-                                    </select>
+                                    @php
+                                        $roleOptions = collect($roles)->mapWithKeys(fn ($r) => [$r->value => $r->label()])->all();
+                                        $groupOptions = ['' => '— Tanpa gugus —']
+                                            + collect($groups)->mapWithKeys(fn ($g) => [$g->id => $g->name])->all();
+                                    @endphp
+
+                                    <x-dropdown name="role" :options="$roleOptions" :selected="$user->role->value" />
+                                    <x-dropdown name="group_id" :options="$groupOptions" :selected="$user->group_id" />
                                     <button type="submit" class="btn btn-primary btn-sm">Simpan</button>
                                 </form>
                             </td>

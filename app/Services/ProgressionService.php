@@ -272,8 +272,52 @@ class ProgressionService
 
     public function statusFor(User $user, Quest $quest): QuestStatus
     {
+        /*
+         * Side Quest TIDAK ada di `questBoard()` — papan itu sengaja hanya
+         * memuat modul utama (`mainline()`), kalau tidak satu misi opsional
+         * yang belum selesai akan mengunci seluruh modul sesudahnya.
+         *
+         * Akibatnya, sebelum perbaikan ini, `statusFor()` selalu mengembalikan
+         * `Locked` untuk Side Quest: halaman detailnya menampilkan "Modul masih
+         * terkunci" beserta tombol "Lihat modul yang terbuka", sehingga
+         * mahasiswa tidak pernah bisa mengunggah bukti foto Side Quest.
+         *
+         * Statusnya dihitung dari syaratnya sendiri: jumlah modul utama selesai
+         * dibandingkan dengan `required_completed_modules`.
+         */
+        if ($quest->is_side_quest) {
+            return $this->sideQuestStatus($user, $quest);
+        }
+
         return $this->questBoard($user)
             ->first(fn (array $row): bool => $row['quest']->is($quest))['status'] ?? QuestStatus::Locked;
+    }
+
+    /**
+     * Status Side Quest: selesai, sedang dikerjakan, terbuka, atau terkunci
+     * karena syarat jumlah modul utama belum terpenuhi.
+     */
+    private function sideQuestStatus(User $user, Quest $quest): QuestStatus
+    {
+        /** @var UserQuest|null $userQuest */
+        $userQuest = $user->userQuests()->where('quest_id', $quest->getKey())->first();
+
+        if ($userQuest?->status === QuestStatus::Completed) {
+            return QuestStatus::Completed;
+        }
+
+        $required = (int) ($quest->required_completed_modules ?? 0);
+        $completed = $this->completedCount($user);
+
+        if ($completed < $required) {
+            return QuestStatus::Locked;
+        }
+
+        if ($userQuest?->status === QuestStatus::InProgress) {
+            return QuestStatus::InProgress;
+        }
+
+        return QuestStatus::Available;
     }
 
     public function markInProgress(User $user, Quest $quest): UserQuest

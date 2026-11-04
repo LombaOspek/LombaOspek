@@ -340,14 +340,16 @@
 
                         <div>
                             <label for="category" class="block font-display text-[0.66rem] font-bold uppercase tracking-[0.08em]">Kategori</label>
-                            <select
-                                id="category" name="category" required
-                                class="mt-1 w-full rounded-sm border-2 border-ink bg-white px-2.5 py-1.5 text-[0.76rem] font-semibold focus:outline-none"
-                            >
-                                @foreach ($categories as $category)
-                                    <option value="{{ $category }}" @selected(old('category') === $category)>{{ $category }}</option>
-                                @endforeach
-                            </select>
+                            @php
+                                $categoryOptions = collect($categories)->mapWithKeys(fn ($c) => [$c => $c])->all();
+                            @endphp
+                            <x-dropdown
+                                name="category"
+                                :options="$categoryOptions"
+                                :selected="old('category')"
+                                required
+                                class="mt-1"
+                            />
                             @error('category')<p class="mt-1 text-[0.62rem] font-bold text-vermilion-deep">{{ $message }}</p>@enderror
                         </div>
 

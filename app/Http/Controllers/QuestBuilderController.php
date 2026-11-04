@@ -47,7 +47,23 @@ class QuestBuilderController extends Controller
         $validated = $this->validated($request);
 
         $quest = new Quest($validated);
-        $quest->code = 'MOD-'.str_pad((string) ($validated['step_number']), 2, '0', STR_PAD_LEFT);
+
+        /*
+         * Side Quest memakai prefix SQ- dan nomor urut sendiri, bukan MOD-.
+         *
+         * Kode MOD- terikat pada `step_number` yang juga urutan peta misi.
+         * Side Quest tidak berada di peta, jadi kalau ia memakai MOD- ia akan
+         * menabrak kode modul utama dan merusak penomoran.
+         */
+        $isSide = (bool) ($validated['is_side_quest'] ?? false);
+        $quest->is_side_quest = $isSide;
+
+        if ($isSide) {
+            $quest->step_number = 0;
+            $quest->code = $this->nextSideQuestCode();
+        } else {
+            $quest->code = 'MOD-'.str_pad((string) ($validated['step_number']), 2, '0', STR_PAD_LEFT);
+        }
 
         // Token disimpan sebagai hash; plaintext tidak pernah menyentuh database.
         if ($validated['verification_method'] === VerificationMethod::Token->value && filled($request->input('token_code'))) {
@@ -75,7 +91,13 @@ class QuestBuilderController extends Controller
         // Kode modul diturunkan dari urutan, jadi harus ikut berubah saat
         // panitia memindahkan modul ke urutan lain. Kode kuis hanya diubah bila
         // belum ada percobaan yang mengunci kode lama.
-        $newCode = 'MOD-'.str_pad((string) $validated['step_number'], 2, '0', STR_PAD_LEFT);
+        /*
+         * Kode hanya diturunkan ulang untuk modul utama. Side Quest memakai
+         * SQ-xx dan tidak punya step_number, jadi kodenya dibiarkan apa adanya.
+         */
+        $newCode = $quest->is_side_quest
+            ? $quest->code
+            : 'MOD-'.str_pad((string) $validated['step_number'], 2, '0', STR_PAD_LEFT);
 
         if ($quest->code !== $newCode) {
             $previousCode = $quest->code;
@@ -110,6 +132,25 @@ class QuestBuilderController extends Controller
     /**
      * @return array<string, mixed>
      */
+    /**
+     * Kode Side Quest berikutnya: SQ-01, SQ-02, ...
+     *
+     * Dibaca dari kode tertinggi yang ada, bukan dari jumlah baris: kalau ada
+     * misi yang dihapus, COUNT(*) akan menghasilkan kode yang sudah dipakai.
+     */
+    private function nextSideQuestCode(): string
+    {
+        $last = Quest::query()
+            ->where('is_side_quest', true)
+            ->where('code', 'like', 'SQ-%')
+            ->orderByDesc('code')
+            ->value('code');
+
+        $number = $last === null ? 1 : ((int) substr($last, 3)) + 1;
+
+        return 'SQ-'.str_pad((string) $number, 2, '0', STR_PAD_LEFT);
+    }
+
     private function validated(Request $request, ?Quest $quest = null): array
     {
         $method = (string) $request->input('verification_method', VerificationMethod::None->value);
@@ -122,8 +163,17 @@ class QuestBuilderController extends Controller
             'location' => ['nullable', 'string', 'max:150'],
             'xp_reward' => ['required', 'integer', 'min:10', 'max:1000'],
             'estimated_minutes' => ['required', 'integer', 'min:1', 'max:600'],
+            /*
+             * Side Quest tidak menempati urutan peta, jadi tidak punya
+             * step_number. Nilai 0 dipakai sebagai penanda "bukan modul utama"
+             * dan dilewati dari aturan unique.
+             */
+            'is_side_quest' => ['nullable', 'boolean'],
+            'required_completed_modules' => ['nullable', 'integer', 'min:0', 'max:50'],
+
             'step_number' => [
-                'required', 'integer', 'min:1', 'max:99',
+                'required_unless:is_side_quest,1',
+                'nullable', 'integer', 'min:1', 'max:99',
                 // Urutan modul menentukan kode MOD-xx, jadi harus unik. Tanpa
                 // aturan ini dua modul bisa mendapat kode sama dan meledak di
                 // tingkat database.
@@ -172,8 +222,19 @@ class QuestBuilderController extends Controller
             }
         }
 
-        // Kode modul harus sama formatnya dengan seeder: MOD-01, MOD-09, MOD-20.
-        $moduleCode = 'MOD-'.str_pad((string) $data['step_number'], 2, '0', STR_PAD_LEFT);
+        /*
+         * Kode modul harus sama formatnya dengan seeder: MOD-01, MOD-09, MOD-20.
+         *
+         * Side Quest tidak punya `step_number` (tidak menempati urutan peta),
+         * jadi kode rujukan kuisnya memakai kode Side Quest itu sendiri -
+         * bukan `$data['step_number']` yang tidak ada dan memicu
+         * "Undefined array key".
+         */
+        $isSide = (bool) ($data['is_side_quest'] ?? false);
+
+        $moduleCode = $isSide
+            ? ($quest?->code ?? 'SQ-00')
+            : 'MOD-'.str_pad((string) ($data['step_number'] ?? 0), 2, '0', STR_PAD_LEFT);
 
         $data['quiz_module_code'] = $data['action_type'] === QuestActionType::Quiz->value
             ? ($quest?->quiz_module_code ?? $moduleCode)

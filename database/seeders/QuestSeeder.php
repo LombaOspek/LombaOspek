@@ -58,7 +58,8 @@ class QuestSeeder extends Seeder
             [
                 'code' => 'MOD-02',
                 'step_number' => 2,
-                'unlock_day' => 2,
+                // Hari 1: perpustakaan masih bagian pengenalan kampus.
+                'unlock_day' => 1,
                 'title' => 'Jelajah Perpustakaan & Repositori Digital',
                 'category' => 'Sarana Pembelajaran',
                 'description' => 'Kunjungi Perpustakaan Pusat, temui petugas, dan minta kode token yang ditempel pada meja layanan digital.',
@@ -79,7 +80,9 @@ class QuestSeeder extends Seeder
             [
                 'code' => 'MOD-03',
                 'step_number' => 3,
-                'unlock_day' => 1,
+                // Hari 2: tur kampus butuh waktu lebih panjang, dijadwalkan
+                // setelah seminar akademik pada hari yang sama.
+                'unlock_day' => 2,
                 'title' => 'Tur Keliling Kampus & Titik Layanan',
                 'category' => 'Orientasi Lingkungan',
                 'description' => 'Telusuri lima titik layanan wajib: gedung rektorat, perpustakaan, laboratorium, kantin, dan klinik. Catat kesan pertama Anda di setiap titik.',

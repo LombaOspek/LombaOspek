@@ -52,13 +52,14 @@ class OrientationScheduleSeeder extends Seeder
             ],
             [
                 'day' => 1,
-                'title' => 'Tur Keliling Kampus & Titik Layanan',
-                'description' => 'Menyusuri lima titik layanan wajib bersama kakak pendamping gugus.',
+                'title' => 'Jelajah Perpustakaan & Repositori Digital',
+                'description' => 'Pengenalan kanal literatur resmi dan cara mengakses repositori kampus.',
                 'starts_at' => '13:00',
-                'ends_at' => '15:30',
-                'location' => 'Lingkungan Kampus UMK',
+                'ends_at' => '15:00',
+                'location' => 'Perpustakaan Pusat UMK',
+                'speaker' => 'Kepala Perpustakaan',
                 'kind' => 'tour',
-                'quest' => 'MOD-03',
+                'quest' => 'MOD-02',
                 'sort_order' => 3,
             ],
 
@@ -78,14 +79,13 @@ class OrientationScheduleSeeder extends Seeder
             ],
             [
                 'day' => 2,
-                'title' => 'Jelajah Perpustakaan & Repositori Digital',
-                'description' => 'Pengenalan kanal literatur resmi dan cara mengakses repositori kampus.',
+                'title' => 'Tur Keliling Kampus & Titik Layanan',
+                'description' => 'Menyusuri lima titik layanan wajib bersama kakak pendamping gugus.',
                 'starts_at' => '10:30',
-                'ends_at' => '12:00',
-                'location' => 'Perpustakaan Pusat UMK',
-                'speaker' => 'Kepala Perpustakaan',
+                'ends_at' => '13:00',
+                'location' => 'Lingkungan Kampus UMK',
                 'kind' => 'tour',
-                'quest' => 'MOD-02',
+                'quest' => 'MOD-03',
                 'sort_order' => 2,
             ],
 
@@ -222,10 +222,22 @@ class OrientationScheduleSeeder extends Seeder
                 }
             }
 
-            OrientationSchedule::updateOrCreate(
-                ['day' => $row['day'], 'title' => $row['title']],
-                $row + ['quest_id' => $questId],
-            );
+            /*
+             * Kunci pencarian memakai `quest_id` lebih dulu, baru `day`.
+             *
+             * `quest_id` unique, jadi ia identitas yang stabil: kalau judul
+             * agenda diubah (mis. "Tur Kampus" pindah hari), updateOrCreate
+             * berbasis judul akan mencoba INSERT baris baru dan ditolak oleh
+             * constraint unique — seeder gagal di tengah jalan.
+             *
+             * Agenda tanpa modul (upacara pembukaan) tidak punya quest_id,
+             * jadi dicari lewat hari + judul seperti semula.
+             */
+            $key = $questId !== null
+                ? ['quest_id' => $questId]
+                : ['day' => $row['day'], 'title' => $row['title']];
+
+            OrientationSchedule::updateOrCreate($key, $row + ['quest_id' => $questId]);
         }
     }
 }

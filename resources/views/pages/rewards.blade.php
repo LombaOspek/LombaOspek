@@ -44,7 +44,15 @@
                     </p>
                 </div>
             @else
-                <div class="grid gap-3 sm:grid-cols-2">
+                {{--
+                    Dua kolom sejak layar terkecil.
+
+                    Satu kolom di ponsel membuat 9 hadiah menjadi daftar sangat panjang -
+                    mahasiswa harus menggulir jauh hanya untuk melihat pilihan yang tersedia.
+                    Dua kolom menampilkan dua kali lebih banyak tanpa memotong informasi,
+                    karena kartu memang dirancang ringkas (gambar, nama, harga, tombol).
+                --}}
+                                            <div class="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
                     @foreach ($rows as $row)
                         @php
                             $reward = $row['reward'];

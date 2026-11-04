@@ -101,10 +101,60 @@
                             class="mt-1 w-full rounded-sm border-2 border-ink bg-white px-2 py-1.5 text-[0.76rem] font-semibold focus:outline-none">
                     </div>
 
-                    <div>
+                    {{--
+                        Jenis misi: modul peta atau Side Quest.
+
+                        Side Quest tidak menempati urutan peta, jadi memilih
+                        "Side Quest" menyembunyikan kolom Urutan Modul dan
+                        menampilkan syarat jumlah modul utama. Kode dibuat
+                        otomatis SQ-xx, bukan MOD-xx.
+                    --}}
+                    <div class="sm:col-span-2">
+                        <label class="block font-display text-[0.66rem] font-bold uppercase tracking-[0.08em]">Jenis Misi</label>
+
+                        <div class="mt-1 grid grid-cols-2 gap-2">
+                            @php $isSideNow = (bool) $val('is_side_quest', 0); @endphp
+
+                            <label class="flex cursor-pointer items-start gap-2 rounded-sm border-2 px-2.5 py-2 transition
+                                {{ ! $isSideNow ? 'border-brand bg-brand/10' : 'border-ink/30 bg-paper-dim hover:border-ink/50' }}">
+                                <input type="radio" name="is_side_quest" value="0" data-quest-kind
+                                    @checked(! $isSideNow) class="mt-0.5 size-3.5 accent-[var(--color-brand)]">
+                                <span class="min-w-0">
+                                    <span class="block font-display text-[0.72rem] font-bold leading-tight">Modul Peta</span>
+                                    <span class="mt-0.5 block text-[0.6rem] font-medium leading-snug text-ink-faint">
+                                        Muncul di peta misi, punya urutan &amp; gerbang hari.
+                                    </span>
+                                </span>
+                            </label>
+
+                            <label class="flex cursor-pointer items-start gap-2 rounded-sm border-2 px-2.5 py-2 transition
+                                {{ $isSideNow ? 'border-vermilion bg-vermilion/10' : 'border-ink/30 bg-paper-dim hover:border-ink/50' }}">
+                                <input type="radio" name="is_side_quest" value="1" data-quest-kind
+                                    @checked($isSideNow) class="mt-0.5 size-3.5 accent-[var(--color-vermilion)]">
+                                <span class="min-w-0">
+                                    <span class="block font-display text-[0.72rem] font-bold leading-tight">Side Quest</span>
+                                    <span class="mt-0.5 block text-[0.6rem] font-medium leading-snug text-ink-faint">
+                                        Misi sosial opsional, terbuka setelah N modul utama.
+                                    </span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div data-main-quest-only>
                         <label for="step_number" class="block font-display text-[0.66rem] font-bold uppercase tracking-[0.08em]">Urutan Modul</label>
                         <input type="number" id="step_number" name="step_number" min="1" max="99" value="{{ $val('step_number', $nextStep) }}"
                             class="mt-1 w-full rounded-sm border-2 border-ink bg-white px-2 py-1.5 text-[0.76rem] font-semibold focus:outline-none">
+                    </div>
+
+                    <div data-side-quest-only @if (! $isSideNow) hidden @endif>
+                        <label for="required_completed_modules" class="block font-display text-[0.66rem] font-bold uppercase tracking-[0.08em]">Syarat: Modul Utama Selesai</label>
+                        <input type="number" id="required_completed_modules" name="required_completed_modules" min="0" max="50"
+                            value="{{ $val('required_completed_modules', 0) }}"
+                            class="mt-1 w-full rounded-sm border-2 border-ink bg-white px-2 py-1.5 text-[0.76rem] font-semibold focus:outline-none">
+                        <p class="mt-1 text-[0.6rem] font-medium leading-snug text-ink-faint">
+                            Jumlah modul peta yang harus selesai sebelum misi ini terbuka.
+                        </p>
                     </div>
 
                     <div>
@@ -115,28 +165,35 @@
 
                     <div>
                         <label for="difficulty" class="block font-display text-[0.66rem] font-bold uppercase tracking-[0.08em]">Tingkat Kesulitan</label>
-                        <select id="difficulty" name="difficulty" class="mt-1 w-full rounded-sm border-2 border-ink bg-white px-2 py-1.5 text-[0.76rem] font-semibold focus:outline-none">
-                            <option value="1" @selected((int) $val('difficulty', 2) === 1)>Mudah (15 menit)</option>
-                            <option value="2" @selected((int) $val('difficulty', 2) === 2)>Sedang (30 menit)</option>
-                            <option value="3" @selected((int) $val('difficulty', 2) === 3)>Sulit (60 menit)</option>
-                        </select>
+                        <x-dropdown
+                            name="difficulty"
+                            :options="[1 => 'Mudah (15 menit)', 2 => 'Sedang (30 menit)', 3 => 'Sulit (60 menit)']"
+                            :selected="$val('difficulty', 2)"
+                            class="mt-1"
+                        />
                     </div>
 
                     <div>
                         <label for="status" class="block font-display text-[0.66rem] font-bold uppercase tracking-[0.08em]">Status</label>
-                        <select id="status" name="status" class="mt-1 w-full rounded-sm border-2 border-ink bg-white px-2 py-1.5 text-[0.76rem] font-semibold focus:outline-none">
-                            <option value="draft" @selected($val('status') === 'draft')>Draf (belum tampil)</option>
-                            <option value="published" @selected($val('status', 'published') === 'published')>Publikasikan</option>
-                        </select>
+                        <x-dropdown
+                            name="status"
+                            :options="['draft' => 'Draf (belum tampil)', 'published' => 'Publikasikan']"
+                            :selected="$val('status', 'published')"
+                            class="mt-1"
+                        />
                     </div>
 
                     <div>
                         <label for="action_type" class="block font-display text-[0.66rem] font-bold uppercase tracking-[0.08em]">Tipe Aksi</label>
-                        <select id="action_type" name="action_type" class="mt-1 w-full rounded-sm border-2 border-ink bg-white px-2 py-1.5 text-[0.76rem] font-semibold focus:outline-none">
-                            @foreach ($actionTypes as $type)
-                                <option value="{{ $type->value }}" @selected($val('action_type') === $type->value)>{{ $type->label() }}</option>
-                            @endforeach
-                        </select>
+                        @php
+                            $actionOptions = collect($actionTypes)->mapWithKeys(fn ($t) => [$t->value => $t->label()])->all();
+                        @endphp
+                        <x-dropdown
+                            name="action_type"
+                            :options="$actionOptions"
+                            :selected="$val('action_type')"
+                            class="mt-1"
+                        />
                     </div>
                 </div>
             </section>

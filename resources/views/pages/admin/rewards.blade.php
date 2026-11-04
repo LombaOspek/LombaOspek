@@ -179,11 +179,12 @@
                     </div>
                     <div>
                         <label for="rw-cat" class="block font-display text-[0.66rem] font-bold uppercase tracking-[0.08em]">Kategori</label>
-                        <select id="rw-cat" name="category" class="mt-1 w-full rounded-sm border-2 border-ink bg-white px-2 py-1.5 text-[0.74rem] font-semibold focus:outline-none">
-                            @foreach (['merchandise' => 'Merchandise', 'voucher' => 'Voucher', 'digital' => 'Digital', 'lainnya' => 'Lainnya'] as $val => $label)
-                                <option value="{{ $val }}" @selected(old('category', 'merchandise') === $val)>{{ $label }}</option>
-                            @endforeach
-                        </select>
+                        <x-dropdown
+                            name="category"
+                            :options="['merchandise' => 'Merchandise', 'voucher' => 'Voucher', 'digital' => 'Digital', 'lainnya' => 'Lainnya']"
+                            :selected="old('category', 'merchandise')"
+                            class="mt-1"
+                        />
                     </div>
                 </div>
 
