@@ -117,6 +117,19 @@
                 <x-icon name="layers" class="size-[1.05rem]" :stroke="1.8" />
                 Quest Builder
             </a>
+            <a href="{{ route('admin.rewards') }}" class="flex items-center gap-2.5 rounded-sm border-2 px-2.5 py-[0.44rem] font-display text-[0.79rem] font-bold transition {{ request()->routeIs('admin.rewards*') ? 'border-ink bg-brand text-white shadow-[var(--shadow-flat-sm)]' : 'border-transparent text-ink-soft hover:border-ink/20 hover:bg-paper' }}">
+                <x-icon name="gift" class="size-[1.05rem]" :stroke="1.8" />
+                Kelola Bursa
+            </a>
+        @endif
+
+        {{-- LO ikut menyerahkan hadiah gugusnya, tetapi hanya melihat daftar
+             klaim - harga dan stok tetap wewenang admin. --}}
+        @if ($navUser?->role === App\Enums\UserRole::LiaisonOfficer)
+            <a href="{{ route('admin.rewards') }}" class="flex items-center gap-2.5 rounded-sm border-2 px-2.5 py-[0.44rem] font-display text-[0.79rem] font-bold transition {{ request()->routeIs('admin.rewards*') ? 'border-ink bg-brand text-white shadow-[var(--shadow-flat-sm)]' : 'border-transparent text-ink-soft hover:border-ink/20 hover:bg-paper' }}">
+                <x-icon name="ticket" class="size-[1.05rem]" :stroke="1.8" />
+                Serahkan Hadiah
+            </a>
         @endif
     </nav>
 

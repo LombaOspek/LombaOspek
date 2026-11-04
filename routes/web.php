@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AdminRewardController;
+use App\Http\Controllers\GroupDetailController;
+use App\Http\Controllers\GroupMemberController;
 use App\Http\Controllers\AchievementController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificateController;
@@ -143,6 +146,30 @@ Route::middleware(['auth', 'role:admin'])
     ->group(function (): void {
         Route::get('/akun', [AccountController::class, 'index'])->name('accounts');
         Route::post('/akun/gugus', [AccountController::class, 'storeGroup'])->name('groups.store');
+
+        // Kelola anggota gugus tanpa import CSV ulang.
+        Route::get('/gugus/{group}', [GroupDetailController::class, 'show'])->name('groups.show');
+        Route::get('/gugus/{group}/kandidat', [GroupMemberController::class, 'candidates'])
+            ->name('groups.candidates');
+
+        /*
+         * Bursa Hadiah dari sisi admin.
+         *
+         * Hanya admin yang boleh mengubah harga/stok: satu harga untuk seluruh
+         * kampus. LO boleh menyerahkan hadiah gugusnya sendiri (dicek di
+         * controller), karena merekalah yang bertemu mahasiswa sehari-hari.
+         */
+        Route::get('/bursa', [AdminRewardController::class, 'index'])->name('rewards');
+        Route::post('/bursa', [AdminRewardController::class, 'store'])->name('rewards.store');
+        Route::put('/bursa/{reward}', [AdminRewardController::class, 'update'])->name('rewards.update');
+        Route::post('/bursa/{reward}/aktifkan', [AdminRewardController::class, 'activate'])->name('rewards.activate');
+        Route::post('/bursa/{reward}/nonaktifkan', [AdminRewardController::class, 'deactivate'])->name('rewards.deactivate');
+        Route::post('/bursa/klaim/{redemption}/serahkan', [AdminRewardController::class, 'fulfill'])
+            ->name('rewards.fulfill');
+        Route::post('/gugus/{group}/anggota', [GroupMemberController::class, 'store'])
+            ->name('groups.members.store');
+        Route::delete('/gugus/{group}/anggota/{user}', [GroupMemberController::class, 'destroy'])
+            ->name('groups.members.destroy');
         Route::post('/akun/import', [AccountController::class, 'bulkImport'])->name('accounts.import');
 
         // Import bertahap: init menyimpan berkas, batch dipanggil berulang

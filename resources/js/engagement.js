@@ -411,6 +411,126 @@ function initSecretMission() {
 }
 
 /* ------------------------------------------------------------------ *
+ * Gugus Wars — polling nyata
+ * ------------------------------------------------------------------ */
+
+/**
+ * Perbarui tarikan tanpa memuat ulang halaman.
+ *
+ * Kenapa polling, bukan WebSocket: proyek ini harus jalan di hosting gratis
+ * tanpa worker persisten. 30 detik sudah cukup - XP berubah karena modul
+ * yang diselesaikan, bukan karena klik cepat.
+ *
+ * Hemat: berhenti saat tab tidak aktif (document.visibilityState) dan saat
+ * halaman tidak punya widget Wars. Badge LIVE baru dinyalakan setelah
+ * respons pertama berhasil, supaya klaim "live" bisa dibuktikan.
+ */
+function initGugusWars() {
+    const root = document.querySelector('[data-gugus-wars]');
+    if (!root) return;
+
+    const endpoint = root.dataset.warsEndpoint;
+    if (!endpoint) return;
+
+    const arena = root.querySelector('[data-war-arena]');
+    const live = root.querySelector('[data-wars-live]');
+    const leftXp = root.querySelector('[data-war-left-xp]');
+    const rightXp = root.querySelector('[data-war-right-xp]');
+    const leftPct = root.querySelector('[data-war-left-pct]');
+    const rightPct = root.querySelector('[data-war-right-pct]');
+    const narasi = root.querySelector('[data-war-message]');
+
+    let timer = null;
+    let failures = 0;
+
+    const setLive = (on, reason = '') => {
+        if (!live) return;
+        live.style.opacity = on ? '1' : '0.4';
+        live.title = on ? 'Diperbarui otomatis tiap 30 detik' : reason;
+    };
+
+    const apply = (wars) => {
+        if (!wars || !wars.available || !arena) return;
+
+        // Satu sumber rasio: batang, VS, dan angka persen semuanya membaca
+        // custom property ini, jadi tidak mungkin saling bertentangan.
+        arena.style.setProperty('--war-ratio', wars.ratio);
+
+        if (leftXp && wars.left) leftXp.textContent = wars.left.xp.toLocaleString('id-ID');
+        if (rightXp && wars.right) rightXp.textContent = wars.right.xp.toLocaleString('id-ID');
+
+        const pct = Math.round(wars.ratio * 100);
+        if (leftPct) leftPct.textContent = pct + '%';
+        if (rightPct) rightPct.textContent = (100 - pct) + '%';
+        if (narasi && wars.message) narasi.textContent = wars.message;
+
+        // aria-label ikut diperbarui: pembaca layar tidak melihat animasi.
+        const label = root.querySelector('[data-war-aria]');
+        if (label && wars.left && wars.right) {
+            label.setAttribute(
+                'aria-label',
+                `Tali tarik tambang: ${wars.left.name} ${pct} persen, ${wars.right.name} ${100 - pct} persen`,
+            );
+        }
+    };
+
+    const poll = async () => {
+        if (document.visibilityState !== 'visible') return;
+
+        try {
+            const res = await fetch(endpoint, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+
+            const data = await res.json();
+            apply(data.gugus_wars);
+
+            failures = 0;
+            setLive(true);
+        } catch {
+            // Jangan matikan badge pada kegagalan pertama: jaringan kampus
+            // putus sesaat adalah hal biasa. Matikan setelah 3 kali.
+            failures++;
+            if (failures >= 3) setLive(false, 'Koneksi terputus — tarikan mungkin sudah berubah');
+        }
+    };
+
+    const start = () => {
+        if (timer) return;
+        timer = setInterval(poll, 30000);
+    };
+
+    const stop = () => {
+        if (!timer) return;
+        clearInterval(timer);
+        timer = null;
+    };
+
+    // Langsung sekali: badge LIVE tidak boleh menyala hanya karena timer dibuat.
+    poll();
+
+    if (typeof IntersectionObserver !== 'undefined') {
+        new IntersectionObserver((entries) => {
+            entries.forEach((e) => (e.isIntersecting ? start() : stop()));
+        }, { threshold: 0.1 }).observe(root);
+    } else {
+        start();
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            poll();
+            start();
+        } else {
+            stop();
+        }
+    });
+}
+
+/* ------------------------------------------------------------------ *
  * Bootstrap
  * ------------------------------------------------------------------ */
 
@@ -418,4 +538,5 @@ export function initEngagement() {
     initDailyBox();
     initLiveFeed();
     initSecretMission();
+    initGugusWars();
 }

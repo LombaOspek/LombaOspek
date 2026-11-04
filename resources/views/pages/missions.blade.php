@@ -90,6 +90,12 @@
                         @php
                             // `chapters` selalu dikirim QuestController::index().
                             $globalIndex = 0;
+
+                            // Total node seluruh babak: dipakai menandai node
+                            // TERAKHIR sebagai garis finish. Menghitungnya di
+                            // sini (bukan menebak dari $loop) membuat penanda
+                            // tetap benar walau jumlah modul berubah.
+                            $totalNodes = collect($chapters)->sum(fn ($c) => count($c['rows']));
                         @endphp
 
                         @foreach ($chapters as $chapter)
@@ -164,6 +170,12 @@
                                     $isActive = ! $completed && ! $locked && $activeRow
                                         && $activeRow['quest']->is($quest);
 
+                                    // Node terakhir = garis finish. Ia tetap
+                                    // memakai status selesai/terkunci untuk
+                                    // warna, tetapi bentuknya bendera: ujung
+                                    // perjalanan harus terlihat seperti ujung.
+                                    $isFinish = $globalIndex === $totalNodes - 1;
+
                                     $nodeKind = $completed
                                         ? 'done'
                                         : ($lockedFuture
@@ -222,7 +234,24 @@
                                             aria-label="Modul {{ $quest->step_number }}: {{ $quest->title }}"
                                         @endif
                                     >
-                                        @if ($completed)
+                                        @if ($isFinish)
+                                            {{-- Bendera finish: ujung lintasan. Tetap
+                                                 menampilkan centang bila sudah selesai,
+                                                 supaya status tidak hilang. --}}
+                                            <span class="quest-finish-flag" aria-hidden="true">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M6 21V4" />
+                                                    <path d="M6 4h11l-2.5 4L17 12H6" />
+                                                </svg>
+                                            </span>
+                                            @if ($completed)
+                                                <span class="quest-finish-check" aria-hidden="true">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="m5 13 4 4 10-10" />
+                                                    </svg>
+                                                </span>
+                                            @endif
+                                        @elseif ($completed)
                                             <x-icon name="check" class="size-7" :stroke="3" />
                                         @elseif ($lockedFuture)
                                             <x-icon name="lock" class="size-5" :stroke="2" />
@@ -311,16 +340,22 @@
                     </ol>
 
                     {{-- Maskot dekoratif di ruang kosong sisi lintasan.
+                         SATU maskot per babak, bukan tiga untuk seluruh peta:
+                         tiap babak punya nada sendiri (pengenalan -> eksplorasi
+                         -> aksi), dan karakter yang muncul di setiap babak
+                         membuat lintasan terasa punya pemandu, bukan hiasan yang
+                         hanya menumpuk di awal.
+
                          Jumlah & posisinya TIDAK dipatok persen: dihitung JS dari
                          jumlah node nyata yang tampil (lihat syncMascots()), lalu
                          digeser ke celah antarbabak bila slotnya kebetulan jatuh
-                         di belakang panel babak. Dengan begitu peta 5 misi dan
-                         peta 40 misi sama-sama terisi proporsional. Tombol, bukan
-                         gambar mati: bisa diklik untuk memunculkan sapaan. --}}
+                         di belakang panel babak. Babak terakhir memakai pose
+                         trofi: penutup perjalanan. --}}
                     <div class="quest-mascot-zone">
                         @foreach ([
-                            ['wira-idea.png', 'WIRA menyapa', 'Setiap langkah kecil hari ini jadi bekal kuliah nanti.'],
-                            ['wira-star.png', 'WIRA memberi semangat', 'Modul terbuka berurutan. Satu per satu, jangan buru-buru.'],
+                            ['wira-idea.png', 'WIRA menyapa', 'Selamat datang di kampus. Mulai dari mengenal tempatnya dulu.'],
+                            ['wira-star.png', 'WIRA memberi semangat', 'Babak eksplorasi: temui dosen, keliling fakultas, tanya apa saja.'],
+                            ['wira-write.png', 'WIRA menemani menulis', 'Saatnya menuangkan yang sudah kamu pelajari jadi aksi nyata.'],
                             ['wira-trophy.png', 'WIRA menunjuk hadiah', 'Sertifikat orientasi menanti di ujung lintasan.'],
                         ] as $index => [$file, $label, $line])
                             <button

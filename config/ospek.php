@@ -70,6 +70,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Side Quest Wajib untuk Sertifikat
+    |--------------------------------------------------------------------------
+    |
+    | Side Quest tetap "opsional" dalam arti tidak masuk rantai prasyarat dan
+    | tidak menambah node di peta. Tetapi satu misi paling ringan dijadikan
+    | syarat sertifikat.
+    |
+    | Alasannya: data menunjukkan side quest murni opsional akan diabaikan -
+    | sertifikat hanya butuh 13 modul utama, jadi tidak ada konsekuensi
+    | melewatkannya, dan tujuan proposal (mendorong interaksi sosial) gagal.
+    | Satu kewajiban ringan (15 menit, tanpa verifikasi) cukup untuk memastikan
+    | tidak ada yang melewatkan sosialisasi sama sekali, sementara empat misi
+    | lain tetap jadi hadiah sukarela berkoin besar.
+    |
+    | Set null untuk mematikan syarat ini.
+    |
+    */
+    'certificate_required_side_quest' => env('OSPEK_REQUIRED_SIDE_QUEST', 'SQ-01'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Babak Tematik Peta Misi
     |--------------------------------------------------------------------------
     |

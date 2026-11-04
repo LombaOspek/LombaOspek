@@ -1310,3 +1310,111 @@ php artisan lo:generate --dry-run
 
 Uji browser (CDP) untuk: balon mobile di kiri maskot, batang Wars mengikuti
 rasio, paginasi gugus, paginasi tanpa reload, dan tombol arsip.
+
+
+## 4 November 2026 — lanjutan (sisa plan)
+
+### 14.12 Panel anggota gugus (2a)
+
+**Masalah:** `storeGroup()` hanya memasukkan LO sebagai anggota, dan satu-satunya
+cara menambah mahasiswa adalah import CSV yang mencocokkan kolom `Kode Gugus`.
+Untuk mahasiswa pindahan atau yang salah gugus, itu berat dan rawan salah.
+
+**Perubahan:** halaman `/admin/gugus/{id}` — daftar anggota, indikator kapasitas
+(bar + sisa slot), pencarian kandidat sejurusan (server-side, debounce 250 ms),
+tambah massal via centang, dan tombol keluarkan.
+
+Aturan yang ditegakkan: anggota gugus **wajib sejurusan**. Kalau beda prodi
+masuk, validasi menolak seluruh permintaan (bukan sebagian) dengan menyebut
+nama dan prodi yang salah.
+
+Keluarkan anggota **tidak menghapus akun** — hanya `group_id` dikosongkan.
+Riwayat XP tetap utuh. Menghapus akun di sini akan membuang riwayat hanya
+karena salah pilih gugus.
+
+**Verifikasi:** `tests/Feature/RemainingPlanTest.php`; di browser gugus
+Akuntansi 1: 72 → 73 anggota setelah dipindah, toast "Anggota ditambahkan",
+lalu 72 lagi setelah dikeluarkan.
+
+### 14.13 Gugus Wars benar-benar live (2e)
+
+**Masalah:** badge "LIVE" hanya hiasan — angka dihitung sekali saat render.
+
+**Perubahan:** `engagement.js` mem-polling `/misi-seru/ringkasan` tiap 30 detik
+dan memperbarui `--war-ratio`, angka XP, persen, narasi, dan `aria-label`.
+Badge LIVE **redup** sampai respons pertama berhasil — klaim harus dibuktikan.
+Polling berhenti saat tab tidak aktif dan saat widget keluar viewport
+(IntersectionObserver), dan mati setelah 3 kegagalan beruntun.
+
+Kenapa polling, bukan WebSocket: harus jalan di hosting gratis tanpa worker
+persisten. 30 detik cukup karena XP berubah karena modul diselesaikan.
+
+**Verifikasi:** di browser badge berubah `opacity 0.4 → 1` dengan title
+"Diperbarui otomatis tiap 30 detik"; XP 10.090 vs 3.770, 73%.
+
+### 14.14 Maskot per babak + bendera finish (3a)
+
+**Masalah:** tiga maskot untuk 13 node (semua menumpuk di awal), dan node
+terakhir hanya lingkaran biasa.
+
+**Perubahan:** satu maskot per babak (4 babak → 4 maskot, pose berbeda:
+menyapa → semangat → menulis → trofi). Node terakhir memakai **bendera finish**
+SVG buatan sendiri, dengan centang kecil di sudut bila sudah selesai, dan
+animasi ayun halus yang dimatikan pada `prefers-reduced-motion`.
+
+**Verifikasi:** `RemainingPlanTest` mengunci tepat **1** elemen
+`quest-finish-flag` dan **4** `.quest-mascot`; di browser peta menampilkan
+bendera di node 13.
+
+### 14.15 Admin Bursa (3b)
+
+**Masalah:** hadiah hanya bisa dibuat lewat seeder; penyerahan lewat CLI.
+`image_path` ada kolomnya tetapi tidak pernah diisi.
+
+**Perubahan:** `/admin/bursa` — tabel hadiah (stok, kuota, klaim, diserahkan),
+form tambah dengan unggah gambar (JPG/PNG/WebP maks 2 MB), aktif/nonaktifkan,
+dan tombol **Serahkan** pada klaim terbaru.
+
+Keputusan:
+- Hanya **admin** yang mengubah harga/stok — satu harga untuk seluruh kampus.
+  LO boleh menyerahkan hadiah gugusnya sendiri.
+- Menonaktifkan, bukan menghapus: klaim lama menunjuk `reward_id`.
+- `stock` kosong = tak terbatas; `0` berarti habis. Dua hal berbeda.
+- Gambar lama dihapus **setelah** gambar baru tersimpan, supaya kegagalan
+  unggah tidak meninggalkan hadiah tanpa gambar.
+- Menyerahkan dua kali ditolak — kalau tidak, satu klaim bisa jadi dua barang.
+
+**Verifikasi:** `RemainingPlanTest` (kreasi, stok kosong, nonaktifkan, serah
+ganda); di browser halaman tampil 11 hadiah tanpa error.
+
+### 14.16 Side Quest wajib untuk sertifikat (3c)
+
+**Masalah:** Side Quest murni opsional akan diabaikan — sertifikat hanya butuh
+13 modul utama, jadi tidak ada konsekuensi melewatkannya, dan tujuan proposal
+(mendorong interaksi sosial) gagal.
+
+**Perubahan:** SQ-01 "Sapa Lima Teman Baru" dijadikan syarat sertifikat lewat
+`config('ospek.certificate_required_side_quest')`. Side Quest **tetap** tidak
+masuk rantai prasyarat dan tidak menambah node peta.
+
+Dua pengaman: kode yang tidak ditemukan **tidak** mengunci sertifikat semua
+orang (salah konfigurasi tidak boleh jadi bencana), dan syarat bisa dimatikan
+dengan mengisi `null`.
+
+Pesan di halaman sertifikat menampilkan syarat sosial **terpisah** dari modul,
+dan hanya muncul saat modul sudah penuh — kalau digabung, mahasiswa bingung
+kenapa angkanya 13/13 tetapi sertifikat masih tertahan.
+
+**Verifikasi:** `RemainingPlanTest` (syarat menahan, selesai membuka, kode
+salah tidak mengunci, bisa dimatikan).
+
+---
+
+## Bug yang ditemukan pada lanjutan ini
+
+| Bug | Penyebab | Perbaikan |
+|---|---|---|
+| `/admin/bursa` & `/admin/gugus/{id}` overflow 385/204 px di mobile | Anak grid default `min-width: auto`, sehingga tabel 44rem memaksa kolom melebar | `min-w-0` pada `<section>` di dalam grid |
+| Halaman admin 500 | Rute di grup `admin` bernama `admin.groups.show`, bukan `groups.show` | Semua `route()` diberi prefix `admin.` |
+| Halaman detail gugus 500 | `route('groups.members.destroy')` tanpa prefix | idem |
+| Sertifikat tidak menampilkan syarat sosial | Pesan syarat hanya ada di service, belum dirender | Ditambahkan di view, terpisah dari pesan modul |

@@ -10,6 +10,15 @@
 <section
     {{ $attributes->merge(['class' => 'rounded-lg border-2 border-ink bg-paper p-4 shadow-[var(--shadow-flat)]']) }}
     aria-labelledby="gugus-wars-title"
+    {{--
+        data-wars-endpoint + data-wars-ratio: engagement.js mem-polling endpoint
+        ini untuk memperbarui tarikan tanpa memuat ulang halaman. Badge LIVE
+        hanya dinyalakan setelah polling pertama berhasil - klaim "live" harus
+        dibuktikan, bukan sekadar ditempel.
+    --}}
+    data-gugus-wars
+    data-wars-endpoint="{{ route('engagement.summary') }}"
+    data-wars-ratio="{{ $wars['available'] ? $wars['ratio'] : '' }}"
 >
     <div class="flex items-start justify-between gap-2">
         <div class="min-w-0">
@@ -21,7 +30,13 @@
                 Tarik tambang XP antargugus. Setiap modul yang Anda tuntaskan menambah tarikan.
             </p>
         </div>
-        <span class="stamp shrink-0 bg-vermilion text-white">LIVE</span>
+        {{-- Badge LIVE redup sampai polling pertama berhasil; tanpa itu,
+             "LIVE" hanyalah hiasan yang tidak dibuktikan apa pun. --}}
+        <span
+            class="stamp shrink-0 bg-vermilion text-white opacity-40 transition-opacity duration-300"
+            data-wars-live
+            title="Menghubungkan…"
+        >LIVE</span>
     </div>
 
     @if (! $wars['available'])
@@ -53,7 +68,7 @@
                     </p>
                     <p class="mt-0.5 truncate font-display text-[0.78rem] font-extrabold leading-tight">{{ $slot['team']['name'] }}</p>
                     <p class="numeric text-[0.68rem] font-bold text-ink-soft">
-                        {{ number_format($slot['team']['xp'], 0, ',', '.') }} XP
+                        <span data-war-{{ $slot['side'] }}-xp>{{ number_format($slot['team']['xp'], 0, ',', '.') }}</span> XP
                         <span class="font-semibold text-ink-faint">· {{ $slot['team']['members'] }} org</span>
                     </p>
                 </div>
@@ -61,7 +76,7 @@
         </div>
 
         {{-- Lintasan tali: pembatas warna dan penanda VS digeser oleh rasio yang SAMA. --}}
-        <div class="relative mt-3" role="img" aria-label="Tali tarik tambang: {{ $left['name'] }} {{ $leftPct }} persen, {{ $right['name'] }} {{ 100 - $leftPct }} persen">
+        <div class="relative mt-3" role="img" data-war-aria aria-label="Tali tarik tambang: {{ $left['name'] }} {{ $leftPct }} persen, {{ $right['name'] }} {{ 100 - $leftPct }} persen">
             {{-- overflow-hidden wajib: penanda digeser sampai +/-100% lebarnya, jadi
                  tanpa klip ia menonjol keluar kartu (terukur 3 elemen keluar
                  batas di 360/393/430px walau body tidak ikut melebar). --}}
@@ -102,13 +117,13 @@
 
             {{-- Skala 0-100 di bawah tali. --}}
             <div class="mt-1 flex justify-between font-mono text-[0.55rem] font-bold text-ink-faint">
-                <span>{{ $leftPct }}%</span>
+                <span data-war-left-pct>{{ $leftPct }}%</span>
                 <span>imbang</span>
-                <span>{{ 100 - $leftPct }}%</span>
+                <span data-war-right-pct>{{ 100 - $leftPct }}%</span>
             </div>
         </div>
 
-        <p class="mt-2 rounded-sm border-2 border-ink bg-gold/25 px-2 py-1.5 text-[0.68rem] font-semibold leading-snug">
+        <p class="mt-2 rounded-sm border-2 border-ink bg-gold/25 px-2 py-1.5 text-[0.68rem] font-semibold leading-snug" data-war-message>
             {{ $wars['message'] }}
         </p>
     @endif

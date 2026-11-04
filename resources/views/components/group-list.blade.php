@@ -24,10 +24,10 @@
         <ul class="mt-1.5 flex flex-col gap-1">
             @foreach ($groups as $group)
                 <li class="flex flex-wrap items-center justify-between gap-1.5 rounded-xs bg-paper-dim px-2 py-1">
-                    <span class="min-w-0">
+                    <a href="{{ route('admin.groups.show', $group) }}" class="min-w-0 underline-offset-2 hover:underline" title="Kelola anggota gugus ini">
                         <span class="block truncate text-[0.68rem] font-bold">{{ $group->name }}</span>
                         <span class="block font-mono text-[0.56rem] font-medium text-ink-faint">{{ $group->study_program }}</span>
-                    </span>
+                    </a>
                     <span class="flex shrink-0 items-center gap-1.5">
                         <span class="font-mono text-[0.6rem] font-bold text-ink-faint">{{ $group->invitation_code }}</span>
                         <span class="stamp bg-paper text-[0.54rem]">{{ $group->members_count }} anggota</span>

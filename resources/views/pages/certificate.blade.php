@@ -88,9 +88,27 @@
             <p class="flex items-start gap-2 text-[0.74rem] font-semibold leading-relaxed text-ink-soft">
                 <x-icon name="warning" class="mt-px size-4 shrink-0 text-vermilion-deep" :stroke="2" />
                 <span>
-                    Sertifikat baru dapat dicetak setelah seluruh {{ $status['total'] }} modul selesai.
-                    Progres Anda saat ini <strong class="text-ink">{{ $status['completed'] }}/{{ $status['total'] }}</strong> —
-                    kurang {{ $status['missing'] }} modul lagi.
+                    @if ($status['missing'] > 0)
+                        Sertifikat baru dapat dicetak setelah seluruh {{ $status['total'] }} modul selesai.
+                        Progres Anda saat ini <strong class="text-ink">{{ $status['completed'] }}/{{ $status['total'] }}</strong> —
+                        kurang {{ $status['missing'] }} modul lagi.
+                    @endif
+
+                    {{--
+                        Syarat sosial ditampilkan terpisah dan hanya bila modul
+                        sudah selesai: kalau digabung, mahasiswa yang baru
+                        menyelesaikan 13 modul akan bingung kenapa sertifikatnya
+                        masih tertahan padahal angkanya sudah penuh.
+                    --}}
+                    @if ($status['missing'] === 0 && ! $status['side_quest_done'])
+                        <span class="block {{ $status['missing'] > 0 ? 'mt-1' : '' }}">
+                            Satu misi sosial masih terbuka:
+                            <strong class="text-ink">Sapa Lima Teman Baru</strong> (Side Quest, ±15 menit).
+                            Sertifikat terbuka setelah misi ini dituntaskan —
+                            <a href="{{ route('side-quests.index') }}" class="font-bold text-brand-deep underline decoration-2 underline-offset-2">buka Side Quest</a>.
+                        </span>
+                    @endif
+
                     Halaman ini tetap ditampilkan sebagai pratinjau.
                 </span>
             </p>
