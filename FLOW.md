@@ -1576,3 +1576,43 @@ digulir. `SidebarScrollbarTest` mengunci dua hal: kelasnya menempel pada
 **Catatan tes:** manifest build memuat lebih dari satu berkas CSS — yang
 pertama adalah bundel font, bukan aplikasi. Tes yang mengambil CSS pertama akan
 gagal pada berkas yang salah; semua CSS harus digabung dulu sebelum diperiksa.
+
+
+### 14.23 Scrollbar halaman (tepi kanan)
+
+**Masalah:** setelah sidebar dipasangi scrollbar sendiri, scrollbar halaman masih
+memakai gaya lama — thumb abu-abu `#b9b3a4`, ujung membulat `999px`, nyaris tak
+terlihat di atas track terang. Dua kontrol yang sama dalam satu layar terlihat
+berasal dari aplikasi berbeda.
+
+**Perubahan:** aturan `::-webkit-scrollbar` global disamakan dengan
+`.sidebar-scroll` — 14px, sudut kotak, thumb tinta, track paper-dim, hover biru.
+
+**Jebakan yang ditemukan saat mengukur (penting):**
+
+1. **`scrollbar-width`/`scrollbar-color` MEMATIKAN `::-webkit-scrollbar`.**
+   Setelah `html { scrollbar-width: thin; scrollbar-color: … }` ditambahkan,
+   lebar scrollbar terukur **10px**, bukan 14px, dan `scrollbarColor` terbaca
+   `rgb(23,21,15)` — tapi warnanya berasal dari properti standard, sementara
+   seluruh aturan `::-webkit-scrollbar` (border 2px, radius 0, min-height)
+   diabaikan. Diperbaiki dengan membungkus keduanya dalam
+   `@supports not selector(::-webkit-scrollbar)` sehingga hanya Firefox yang
+   memakainya.
+
+2. **`scrollTo()` tidak bergerak di bawah emulasi `setDeviceMetricsOverride`.**
+   `window.scrollTo(0, 400)` memberi `scrollY: 0` meski `scrollHeight` 1885 >
+   `clientHeight` 900, tanpa `overflow:hidden` di mana pun. Ini artefak emulasi
+   headless, **bukan bug aplikasi**: dengan `Emulation.clearDeviceMetricsOverride`
+   dan event `Input.dispatchMouseEvent` bertipe `mouseWheel`, `scrollY` menjadi
+   `300` seperti seharusnya. Pelajaran: uji scroll memakai wheel asli, jangan
+   `scrollTo` di bawah emulasi.
+
+**Verifikasi:** `lebarScrollbar: 14` (sama dengan sidebar), `scrollbarWidth:
+auto` (mode webkit aktif kembali), `scrollbarColor: auto`, `gutter: stable`,
+lebar konten halaman pendek dan panjang sama-sama `1426` (tidak bergeser),
+wheel → `scrollY: 300`. Crop tepi kanan 4x di Chrome headless menunjukkan thumb
+hitam pekat bersudut kotak di atas track krem.
+
+**Catatan tes:** `assertStringNotContainsString('#b9b3a4', $css)` menandai
+komentar penjelasan sendiri. Asersi harus memeriksa **deklarasi**
+(`background: #b9b3a4`), bukan string mentah di seluruh berkas.

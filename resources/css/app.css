@@ -114,23 +114,85 @@
         }
     }
 
+    /*
+     * Scrollbar global (halaman, panel, tabel) — neo-brutalist.
+     *
+     * Sebelumnya: abu-abu #b9b3a4 dengan ujung membulat 999px, nyaris tak
+     * terlihat di atas track terang. Itu sisa gaya default dan bertentangan
+     * dengan bahasa visual proyek, di mana satu-satunya elemen membulat adalah
+     * lencana status — bukan kontrol.
+     *
+     * Sekarang sama dengan .sidebar-scroll: sudut kotak, thumb tinta, track
+     * paper-dim. Satu gaya scrollbar untuk seluruh aplikasi supaya kontrol
+     * yang sama tidak terlihat seperti berasal dari aplikasi berbeda.
+     */
     ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
+        width: 14px;
+        height: 14px;
     }
 
     ::-webkit-scrollbar-track {
         background: var(--color-paper-dim);
+        /* Garis dalam 1px menandai batas area gulir tanpa border 2px yang
+           akan memakan ruang konten. */
+        box-shadow: inset 1px 0 0 0 color-mix(in srgb, var(--color-ink) 18%, transparent);
     }
 
     ::-webkit-scrollbar-thumb {
-        background: #b9b3a4;
+        background: var(--color-ink);
         border: 2px solid var(--color-paper-dim);
-        border-radius: 999px;
+        /* Kotak, bukan pill: sudut membulat hanya untuk lencana. */
+        border-radius: 0;
+        /* Tinggi minimum agar thumb tetap bisa digenggam pada halaman sangat
+           panjang — tanpa ini ia menyusut jadi garis tipis yang mustahil diklik. */
+        min-height: 2.5rem;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-        background: #9d9684;
+        background: var(--color-brand);
+    }
+
+    ::-webkit-scrollbar-thumb:active {
+        background: var(--color-brand-deep);
+    }
+
+    /* Tombol panah dibuang: dua elemen yang harus diberi gaya tanpa manfaat. */
+    ::-webkit-scrollbar-button {
+        display: none;
+        width: 0;
+        height: 0;
+    }
+
+    ::-webkit-scrollbar-corner {
+        background: var(--color-paper-dim);
+    }
+
+    /*
+     * scrollbar-gutter: stable menahan lebar gutter meski halaman belum cukup
+     * panjang untuk menggulir. Tanpa ini, berpindah dari halaman pendek
+     * (mis. /profil) ke halaman panjang (mis. /admin/akun) menggeser seluruh
+     * tata letak 14px ke kiri — kedipan yang terlihat jelas saat presentasi.
+     */
+    html {
+        scrollbar-gutter: stable;
+        overscroll-behavior-y: none;
+    }
+
+    /*
+     * Firefox hanya mengenal `scrollbar-width`/`scrollbar-color`, tidak
+     * mengenal ::-webkit-scrollbar.
+     *
+     * PENTING: di Chrome, menetapkan kedua properti itu MENGAKTIFKAN mode
+     * "standard scrollbar" dan seluruh aturan ::-webkit-scrollbar diabaikan —
+     * akibatnya lebar turun jadi 10px dan warna tinta tidak terpakai. Karena
+     * itu keduanya dibungkus @supports yang hanya cocok di peramban TANPA
+     * dukungan ::-webkit-scrollbar (yaitu Firefox).
+     */
+    @supports not selector(::-webkit-scrollbar) {
+        html {
+            scrollbar-width: thin;
+            scrollbar-color: var(--color-ink) var(--color-paper-dim);
+        }
     }
 }
 

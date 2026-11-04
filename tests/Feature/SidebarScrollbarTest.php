@@ -41,6 +41,52 @@ class SidebarScrollbarTest extends TestCase
         );
     }
 
+    public function test_page_scrollbar_uses_the_same_neo_brutalist_style(): void
+    {
+        /*
+         * Scrollbar halaman sempat tertinggal: abu-abu #b9b3a4 dengan ujung
+         * membulat, nyaris tak terlihat di atas track terang — sementara
+         * sidebar sudah kotak-hitam. Kontrol yang sama tidak boleh terlihat
+         * berasal dari aplikasi berbeda.
+         */
+        $css = file_get_contents(resource_path('css/app.css'));
+
+        $this->assertStringNotContainsString(
+            'background: #b9b3a4',
+            $css,
+            'Warna scrollbar lama masih dipakai: seharusnya memakai tinta/brand.',
+        );
+
+        $this->assertMatchesRegularExpression(
+            '/::-webkit-scrollbar-thumb\s*\{[^}]*background:\s*var\(--color-ink\)/s',
+            $css,
+            'Thumb scrollbar global harus memakai warna tinta, bukan abu-abu.',
+        );
+
+        $this->assertMatchesRegularExpression(
+            '/::-webkit-scrollbar-thumb\s*\{[^}]*border-radius:\s*0/s',
+            $css,
+            'Thumb scrollbar harus bersudut kotak; hanya lencana yang membulat.',
+        );
+
+        // Gutter stabil: tanpa ini, tata letak bergeser saat pindah halaman.
+        $this->assertStringContainsString('scrollbar-gutter: stable', $css);
+    }
+
+    public function test_standard_scrollbar_properties_do_not_cancel_webkit_rules(): void
+    {
+        /*
+         * Di Chrome, menetapkan `scrollbar-width`/`scrollbar-color` pada
+         * elemen MENGAKTIFKAN mode standard scrollbar dan seluruh aturan
+         * ::-webkit-scrollbar diabaikan — lebar turun ke 10px dan warna tinta
+         * tidak terpakai. Keduanya harus dibungkus @supports yang hanya cocok
+         * di peramban tanpa ::-webkit-scrollbar (Firefox).
+         */
+        $css = file_get_contents(resource_path('css/app.css'));
+
+        $this->assertStringContainsString('@supports not selector(::-webkit-scrollbar)', $css);
+    }
+
     public function test_scrollbar_styles_are_built_into_the_bundle(): void
     {
         /*
