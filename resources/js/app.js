@@ -323,7 +323,15 @@ export function levelUp({ level, title, sound = true } = {}) {
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-label', 'Level naik');
-    overlay.className = 'fixed inset-0 z-[10000] flex items-center justify-center bg-ink/70 p-4 backdrop-blur-sm';
+    /*
+     * Latar disiapkan TANPA warna lebih dulu.
+     *
+     * Sebelumnya overlay langsung dipasang dengan bg-ink/70, sementara kartunya
+     * beranimasi `pop-in` yang mulai dari opacity 0. Selama ~100ms pertama yang
+     * terlihat hanya layar gelap tanpa isi — persis gejala "halaman redup tanpa
+     * alasan". Gelapnya baru dinyalakan setelah kartu benar-benar tampil.
+     */
+    overlay.className = 'fixed inset-0 z-[10000] flex items-center justify-center p-4';
 
     const card = document.createElement('div');
     card.className = 'relative w-full max-w-sm overflow-hidden rounded-xl border-[3px] border-ink bg-paper p-6 text-center';
@@ -362,6 +370,21 @@ export function levelUp({ level, title, sound = true } = {}) {
     overlay.appendChild(card);
     document.body.appendChild(overlay);
     document.body.style.overflow = 'hidden';
+
+    /*
+     * Gelapkan latar SETELAH kartu terpasang, dengan transisi.
+     *
+     * Kartu memakai `pop-in` yang mulai dari opacity 0; kalau latar sudah gelap
+     * sejak awal, ada ~100ms layar gelap kosong. Transisi 160ms juga membuat
+     * kemunculannya terasa disengaja, bukan kedipan.
+     */
+    overlay.style.backgroundColor = 'transparent';
+    overlay.style.backdropFilter = 'blur(0px)';
+    overlay.style.transition = 'background-color 160ms ease, backdrop-filter 160ms ease';
+    requestAnimationFrame(() => {
+        overlay.style.backgroundColor = 'color-mix(in srgb, var(--color-ink) 70%, transparent)';
+        overlay.style.backdropFilter = 'blur(4px)';
+    });
 
     if (sound) {
         playTone('levelup');

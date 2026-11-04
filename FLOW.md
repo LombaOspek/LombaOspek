@@ -1833,3 +1833,54 @@ bergambar, file benar-benar ada, gambar valid ≥400px dan persegi, `object-cont
 tidak ada teks uji, dan semua gambar terender di `/bursa`. E2E browser:
 **9/9 gambar HTTP 200, 900×900, tidak ada yang rusak** di `/bursa` maupun
 `/admin/bursa`.
+
+
+### 14.28 Bug: halaman terlihat redup tanpa alasan
+
+**Gejala:** Peta Misi tampil **gelap 21% merata** — latar krem `rgb(251,249,244)`
+menjadi `rgb(173,171,166)`, tidak ada satu pun piksel putih murni (nilai
+tertinggi hanya 193). Tidak ada modal terlihat, tidak ada galat di konsol.
+
+**Cara menelusuri.** DOM diperiksa dan **bersih**: tidak ada elemen ber-`position:
+fixed` maupun `absolute` yang menutupi, tidak ada modal terbuka,
+`body.backgroundColor` tetap normal `rgb(219,215,205)`. Kesimpulannya overlay
+tidak ada **pada saat itu** — artinya ia muncul sementara lalu hilang, atau
+muncul setelah pemeriksaan.
+
+Petunjuknya dari data, bukan dugaan: rasio kecerahan gambar pengguna terhadap
+halaman normal = **0,79**, dan `1 - 173/251 = 0,31`. Angka itu cocok dengan
+`bg-ink/70` yang dipadukan `backdrop-blur` — dan satu-satunya elemen seperti itu
+yang bergerak dinamis adalah **overlay Level Up** (`app.js`, `z-[10000]`).
+
+**Akar masalah (dua lapis):**
+
+1. **Timer tidak dibatalkan saat halaman ditinggalkan.**
+   `quest-detail.blade.php` menjadwalkan `setTimeout(() => levelUp(), 900)`
+   setelah modul selesai. Kalau mahasiswa menekan "Peta Misi" sebelum 900ms,
+   timer tetap menyala di dokumen **baru** dan overlay terpasang di sana.
+
+2. **Latar gelap muncul sebelum kartunya.** `overlay.className` langsung memuat
+   `bg-ink/70`, sementara kartu memakai animasi `pop-in` yang mulai dari
+   `opacity: 0`. Selama ~100ms yang terlihat hanya **layar gelap kosong** —
+   persis gejala "redup tanpa alasan".
+
+**Perbaikan:**
+
+| Perbaikan | Alasan |
+|---|---|
+| `clearTimeout` pada `pagehide` + `beforeunload` | timer 900ms tidak boleh hidup melewati dokumennya |
+| Overlay dibuat tanpa `bg-ink`, lalu digelapkan lewat `requestAnimationFrame` | latar dan kartu tampil bersamaan; transisi 160ms terasa disengaja, bukan kedipan |
+| `body.style.overflow` tetap dilepas saat ditutup | overlay mengunci scroll; kunci yang tertinggal membuat halaman terasa membeku |
+
+**Verifikasi.** Uji perilaku di browser: overlay dipicu lalu langsung pindah
+halaman → **tidak ada overlay** di halaman tujuan, `body.overflow` kembali
+`visible`, latar normal `rgb(219,215,205)`. Urutan animasi diukur: `bg` transparan
+saat overlay dibuat, `cardOpacity: 1`, lalu `bg` menjadi `ink/70` setelah dua
+frame. Timer 900ms yang disuntik manual **tidak menyala** setelah navigasi.
+Kecerahan halaman pulih: median **235** (sebelumnya 170).
+
+`LevelUpOverlayTest` (4 tes / 13 assertions) mengunci keempat hal ini.
+
+**Catatan:** laporan "teks Registrasi Ulang rata kanan sehingga terlihat aneh"
+**tidak terbukti** — jarak label ke node diukur di 13 modul dan hasilnya **18px
+seragam** (`selisih: 0`). Itu memang desain zig-zag kiri-kanan, bukan cacat.

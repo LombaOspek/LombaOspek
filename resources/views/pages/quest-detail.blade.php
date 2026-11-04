@@ -299,7 +299,17 @@
         const levelUp = window.Ospek?.detectLevelUp?.();
 
         if (levelUp) {
-            window.setTimeout(() => window.Ospek.levelUp(levelUp), 900);
+            /*
+             * Timer ini HARUS dibatalkan bila mahasiswa meninggalkan halaman
+             * sebelum 900ms. Tanpa pembatalan, overlay level-up muncul di
+             * halaman berikutnya: latar jadi gelap 70% dengan kartu kuning
+             * yang tidak diminta, dan mahasiswa mengira aplikasi rusak.
+             * Ini persis yang terlihat saat menekan "Peta Misi" sesaat setelah
+             * menyelesaikan modul.
+             */
+            const levelUpTimer = window.setTimeout(() => window.Ospek.levelUp(levelUp), 900);
+            window.addEventListener('pagehide', () => window.clearTimeout(levelUpTimer), { once: true });
+            window.addEventListener('beforeunload', () => window.clearTimeout(levelUpTimer), { once: true });
         }
     }
 
