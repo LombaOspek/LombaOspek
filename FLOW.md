@@ -1546,3 +1546,33 @@ Dua hal yang dibuktikan angka ini:
 
 Data uji dibersihkan setelahnya: submission dihapus, XP/koin mahasiswa
 dikembalikan ke 0, dan rekonsiliasi global tetap **2441 = 2441**.
+
+
+### 14.22 Scrollbar sidebar custom
+
+**Masalah:** sidebar adalah satu-satunya area yang isinya bisa melebihi tinggi
+layar (menu mahasiswa + admin + akun = 954 px pada layar 620 px), dan ia
+mewarisi scrollbar default: abu-abu, membulat, tanpa kaitan dengan tema.
+
+**Perubahan:** kelas `.sidebar-scroll` dengan gaya sendiri:
+
+| Aspek | Nilai | Alasan |
+|---|---|---|
+| Lebar | 14 px (12 px thumb + 2 px border) | angka terukur di browser = angka yang tertulis |
+| Sudut | 0 (kotak) | satu-satunya elemen membulat di proyek ini adalah lencana |
+| Thumb | tinta `#17150f`, hover biru brand | warna berubah, ukuran tidak — thumb yang melebar saat hover membuat kursor lepas |
+| Track | paper-dim + garis dalam 1 px | batas area gulir terbaca tanpa border 2 px |
+| `min-height` thumb | 2.5 rem | tanpa ini thumb jadi garis 8 px yang mustahil diklik saat daftar panjang |
+| Tombol panah | disembunyikan | dua elemen yang harus diberi gaya tanpa manfaat |
+| `scrollbar-gutter` | `stable` | menu tidak bergeser 12 px ketika daftar bertambah panjang |
+| Mobile (< 1024 px) | `scrollbar-width: none` | 12 px terlalu mahal di drawer yang sudah sempit; jari menggulir langsung |
+
+**Verifikasi:** diukur di browser — `scrollbarPx: 14`, `scrollbarColor:
+rgb(23,21,15) rgb(243,240,231)`, `gutter: stable`, gulir berfungsi (0 → 200),
+dan pada drawer mobile `scrollbarWidth: none` sementara kontennya tetap bisa
+digulir. `SidebarScrollbarTest` mengunci dua hal: kelasnya menempel pada
+`<aside id="sidebar">`, dan aturannya benar-benar masuk bundle hasil build.
+
+**Catatan tes:** manifest build memuat lebih dari satu berkas CSS — yang
+pertama adalah bundel font, bukan aplikasi. Tes yang mengambil CSS pertama akan
+gagal pada berkas yang salah; semua CSS harus digabung dulu sebelum diperiksa.

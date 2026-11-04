@@ -135,6 +135,92 @@
 }
 
 @layer components {
+
+/* ------------------------------------------------------------------ *
+ * Scrollbar sidebar (neo-brutalist)
+ * ------------------------------------------------------------------ *
+ *
+ * Scrollbar global di atas masih abu-abu membulat — itu sisa gaya default dan
+ * tidak cocok dengan bahasa visual proyek. Sidebar adalah satu-satunya area
+ * yang isinya benar-benar bisa melebihi tinggi layar (menu mahasiswa + admin
+ * + akun), jadi ia butuh scrollbar yang sengaja didesain, bukan diwarisi.
+ *
+ * Keputusan:
+ * - Sudut kotak, tanpa border-radius: satu-satunya elemen membulat di proyek
+ *   ini adalah lencana status, bukan kontrol.
+ * - Thumb berwarna tinta dengan garis luar; saat hover jadi biru brand.
+ *   Warna berubah, ukuran tidak — thumb yang melebar saat hover membuat
+ *   kursor "lepas" dari elemen yang sedang digenggam.
+ * - Track lebih gelap dari kartu supaya batas area gulir terbaca, tetapi
+ *   tidak cukup kontras untuk bersaing dengan menu.
+ * - scrollbar-gutter: stable menahan lebar tetap saat scrollbar muncul, jadi
+ *   menu tidak bergeser 12px ketika daftar bertambah panjang.
+ */
+
+.sidebar-scroll {
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    /* Firefox: thumb di depan, track di belakang. */
+    scrollbar-color: var(--color-ink) var(--color-paper-dim);
+    overscroll-behavior: contain;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+    /* 14px = 12px thumb + 2px border tiap sisi. Ditulis eksplisit supaya nilai
+       yang terukur di browser sama dengan yang tertulis di sini. */
+    width: 14px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+    background: var(--color-paper-dim);
+    /* Garis pemisah tipis di sisi kiri track: memberi tahu bahwa ini area
+       gulir, tanpa menambah border 2px yang akan memakan ruang menu. */
+    box-shadow: inset 1px 0 0 0 color-mix(in srgb, var(--color-ink) 18%, transparent);
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+    background: var(--color-ink);
+    border: 2px solid var(--color-paper-dim);
+    border-radius: 0;
+    /* Tinggi minimum agar thumb tetap bisa digenggam saat daftar sangat
+       panjang — tanpa ini thumb jadi garis 8px yang mustahil diklik. */
+    min-height: 2.5rem;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--color-brand);
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:active {
+    background: var(--color-brand-deep);
+}
+
+/* Tombol panah: dibuang. Panah kecil tidak berguna pada daftar menu dan
+   hanya menambah dua elemen yang harus diberi gaya. */
+.sidebar-scroll::-webkit-scrollbar-button {
+    display: none;
+    height: 0;
+    width: 0;
+}
+
+/* Sudut pertemuan scrollbar horizontal & vertikal. */
+.sidebar-scroll::-webkit-scrollbar-corner {
+    background: var(--color-paper-dim);
+}
+
+/* Di layar sentuh scrollbar disembunyikan: ia hanya memakan 12px lebar
+   drawer yang sudah sempit, dan jari menggulir langsung di konten. */
+@media (max-width: 1023px) {
+    .sidebar-scroll {
+        scrollbar-width: none;
+    }
+
+    .sidebar-scroll::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+    }
+}
+
     /* Bingkai neo-brutalis: garis tinta 2px + bayangan padat tanpa blur. */
     .edge {
         border: 2px solid var(--color-ink);

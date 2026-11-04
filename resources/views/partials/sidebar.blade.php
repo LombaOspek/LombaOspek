@@ -24,7 +24,7 @@
 {{-- Sidebar: tetap di desktop, drawer di mobile (dikendalikan partials/topbar). --}}
 <aside
     id="sidebar"
-    class="fixed inset-y-0 left-0 z-40 hidden w-[17rem] shrink-0 flex-col overflow-y-auto border-r-2 border-ink bg-shell p-4 shadow-[var(--shadow-flat-xl)] lg:sticky lg:top-3 lg:z-auto lg:flex lg:max-h-[calc(100vh-1.5rem)] lg:rounded-l-xl lg:border-2 lg:shadow-[var(--shadow-flat)]"
+    class="sidebar-scroll fixed inset-y-0 left-0 z-40 hidden w-[17rem] shrink-0 flex-col overflow-y-auto border-r-2 border-ink bg-shell p-4 shadow-[var(--shadow-flat-xl)] lg:sticky lg:top-3 lg:z-auto lg:flex lg:max-h-[calc(100vh-1.5rem)] lg:rounded-l-xl lg:border-2 lg:shadow-[var(--shadow-flat)]"
     aria-label="Navigasi utama"
 >
     <a href="{{ route('dashboard') }}" class="group flex items-center gap-2.5 rounded-md px-1 py-1">
