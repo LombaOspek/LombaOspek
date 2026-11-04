@@ -1509,3 +1509,40 @@ perbaikan: **0 error, 0 overflow**.
 php artisan storage:link      # WAJIB, kalau tidak gambar hadiah 404
 php artisan demo:passwords --role=lo   # hanya untuk demo, jangan di produksi
 ```
+
+
+### 14.21 Alur verifikasi anti-curang diverifikasi setelah rebuild gugus
+
+Inti yang akan ditanya juri adalah "bagaimana Anda mencegah curang", dan aturan
+"LO hanya menilai gugusnya sendiri" bergantung pada `group_id` — data yang baru
+saja saya susun ulang. Jadi alurnya diuji ulang, bukan diasumsikan.
+
+**Kasus uji:** mahasiswa `202652254` (Wanda Efendi), gugus **Sistem Informasi 1**,
+mengunggah bukti foto untuk modul 1.
+
+| Penguji | Hasil |
+|---|---|
+| `LO-2022-004` (Informatika — beda jurusan) | **tidak melihat** bukti tersebut; daftar kosong |
+| `LO-2022-001` (Sistem Informasi — sejurusan) | **melihat** bukti dan punya tombol tinjau |
+
+Setelah disetujui lewat `VerificationService::review()`:
+
+```
+status    : pending -> approved
+reviewed  : 2026-11-04 18:36:22
+xp        : 0 -> 330   (100 modul + 230 lencana yang terbuka)
+ledger    : +100 -> saldo 100  (baris terpisah dari lencana)
+koin      : 110 = ledger 110  (rekonsiliasi cocok)
+```
+
+Dua hal yang dibuktikan angka ini:
+
+1. **XP modul dicatat transaksinya sendiri**, bukan hanya kolom `users.xp`.
+   Selisih 330 vs 100 bukan bug — 230 sisanya dari lencana yang terbuka di
+   request yang sama. Inilah alasan tes tidak boleh mengunci delta XP total.
+2. **Koin ikut bertambah bersama XP** dan ledger-nya seimbang, membuktikan
+   wiring `CoinService` di jalur verifikasi masih utuh setelah gugus disusun
+   ulang.
+
+Data uji dibersihkan setelahnya: submission dihapus, XP/koin mahasiswa
+dikembalikan ke 0, dan rekonsiliasi global tetap **2441 = 2441**.
