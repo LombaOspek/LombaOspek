@@ -1718,3 +1718,60 @@ benar sejak awal — memakai route `lo.proof`, bukan `asset()`.
 (`/sertifikat` seharusnya `/sijil`, `/admin/quest-builder` seharusnya
 `/admin/misi`). Selalu ambil daftar route dari `php artisan route:list`, jangan
 menebak dari nama halaman.
+
+
+### 14.26 Akun demo untuk juri
+
+**Masalah yang muncul saat menyiapkannya:** ketiga akun demo punya XP yang tidak
+sesuai ledger (2.560 vs 1.240 di baris transaksi), dan akun LO/Admin punya 1.660
+XP yang tidak pernah diberikan. Setelah ditelusuri, **skema awal memberi kolom
+`users.xp` default 1320 dan `users.level` default 4**
+(`2026_10_29_174430_add_gamification_fields_to_users_table.php:21-22`).
+
+Akibatnya **setiap akun baru** — hasil import massal, akun manual, akun demo —
+langsung ber-XP tanpa satu pun baris `xp_transactions`. Dua kerusakan:
+
+1. Rekonsiliasi `users.xp == SUM(xp_transactions.amount)` tidak pernah bisa
+   benar, padahal itu justru yang dibuktikan ke juri.
+2. Papan peringkat menampilkan mahasiswa baru sebagai level 4 "Pemikir Cepat",
+   sehingga peringkat kehilangan makna sejak hari pertama.
+
+**Perbaikan:** migrasi `2026_11_04_120100_reset_default_xp_on_users_table`
+mengubah default menjadi `xp = 0` dan `level = 1`, lalu mengembalikan saldo ke
+nol HANYA untuk akun yang tidak punya transaksi sama sekali. Akun yang sudah
+bermain punya baris ledger, jadi tidak disentuh — reset massal akan menghapus
+progres mahasiswa sungguhan.
+
+**Perintah `demo:accounts`** (idempoten, aman diulang):
+
+```bash
+php artisan demo:accounts --password=SandiAnda123     # buat/perbarui
+php artisan demo:accounts --fresh                      # reset saldo lalu isi ulang
+php artisan demo:accounts --show                        # lihat tanpa mengubah
+```
+
+| Peran | NIM | Gugus |
+|---|---|---|
+| Mahasiswa | `DEMO-MHS` | gugus yang punya LO sejurusan |
+| LO | `DEMO-LO` | gugus yang sama |
+| Admin | `DEMO-ADMIN` | - |
+
+Mahasiswa dan LO sengaja **satu gugus sejurusan** supaya juri bisa mencoba alur
+anti-curang: mahasiswa mengunggah bukti, LO menilainya. Kalau berbeda jurusan,
+alur itu justru ditolak oleh aturan yang benar.
+
+Sandi tidak disimpan di seeder dan tidak di-commit; perintah mencetaknya sekali.
+Saldo awal diberikan **lewat ledger** (`XpService`/`CoinService`), bukan dengan
+`UPDATE users SET xp`, supaya rekonsiliasi tetap seimbang.
+
+**Verifikasi (3 lapis):**
+
+| Lapis | Isi | Hasil |
+|---|---|---|
+| Unit-ish (feature) | `DemoAccountsTest` 11 tes / 51 assertions | 3 akun, sandi `Hash::check`, login HTTP, satu gugus, idempoten, rekonsiliasi, akun baru mulai 0 XP, hak akses per peran |
+| DB | query langsung | `xp=900/900`, `koin=700/700`, `orphan xp tanpa ledger: 0` |
+| E2E browser | `demo-login.mjs` | login ketiga akun lewat form, mendarat di `/dashboard`, halaman wajib 200, halaman admin 403 untuk non-admin |
+
+**Catatan tes:** ekspektasi awal saya "LO mendarat di `/lo/verifikasi`" **salah** —
+`AuthController` memakai `route('dashboard')` untuk semua peran. Itu ekspektasi
+tes yang keliru, bukan bug aplikasi; asersinya diperbaiki.
