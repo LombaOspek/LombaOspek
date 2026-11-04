@@ -8,6 +8,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Masuk · {{ $program['name'] }}</title>
+
+    <link rel="icon" href="{{ asset('favicon-32.png') }}" sizes="32x32" type="image/png">
+    <link rel="icon" href="{{ asset('favicon-16.png') }}" sizes="16x16" type="image/png">
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
     <meta name="description" content="Masuk ke portal orientasi {{ $program['name'] }} — {{ $program['university'] }}.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">

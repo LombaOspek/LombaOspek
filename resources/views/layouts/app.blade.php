@@ -30,6 +30,22 @@
     >
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    {{--
+        Ikon tab. Tanpa tag ini browser hanya menebak /favicon.ico dan, bila
+        berkasnya kosong seperti sebelumnya, menampilkan ikon dokumen abu-abu.
+
+        Urutan penting: PNG 32px didahulukan karena Chrome memilih ukuran
+        terdekat dari yang tersedia lebih dulu; .ico diletakkan paling akhir
+        sebagai jaring pengaman untuk peramban lama dan untuk permintaan
+        otomatis /favicon.ico.
+    --}}
+    <link rel="icon" href="{{ asset('favicon-32.png') }}" sizes="32x32" type="image/png">
+    <link rel="icon" href="{{ asset('favicon-16.png') }}" sizes="16x16" type="image/png">
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
+    <link rel="manifest" href="{{ asset('site.webmanifest') }}">
+
     @stack('head')
 </head>
 <body class="min-h-screen bg-canvas">

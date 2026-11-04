@@ -1,0 +1,26 @@
+{
+    "name": "OspekQuest — Portal Orientasi Universitas Muria Kudus",
+    "short_name": "OspekQuest",
+    "description": "Portal orientasi mahasiswa baru bergamifikasi: selesaikan modul, naik level, dan raih sertifikat.",
+    "start_url": "/dashboard",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "background_color": "#dbd7cd",
+    "theme_color": "#2758a3",
+    "lang": "id",
+    "icons": [
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}
