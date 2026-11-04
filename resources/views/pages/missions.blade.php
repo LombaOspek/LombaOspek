@@ -869,9 +869,24 @@
             return top;
         };
 
-        // Sebar tiga maskot di 1/4, 1/2, 3/4 panjang daftar - relatif
-        // terhadap daftar, jadi peta pendek maupun panjang tetap terisi.
-        const slots = [0.25, 0.5, 0.75];
+        /*
+         * Sebar maskot merata sepanjang daftar, satu slot per maskot.
+         *
+         * Sebelumnya slot-nya DIPATOK tiga: [0.25, 0.5, 0.75]. Padahal view
+         * merender EMPAT maskot (satu per babak + penutup). Maskot keempat
+         * mengambil `slots[4 % 3]` = slots[0] = 0.25, yaitu posisi yang sudah
+         * dipakai maskot pertama, sehingga `overlapsMascot()` menolaknya dan
+         * `relocate()` mengembalikan posisi aslinya - dua maskot bertumpuk di
+         * satu titik.
+         *
+         * Akibat yang terlihat pengguna: Bab 3 (Aksi & Penutupan) tidak punya
+         * karakter WIRA sama sekali di sepanjang jalannya, karena maskot
+         * terakhir (pose trofi) menempel di Bab 1, bukan di ujung lintasan.
+         *
+         * Rumus (i + 0.5) / n memberi 0.125, 0.375, 0.625, 0.875 untuk empat
+         * maskot: satu di tiap babak, dan yang terakhir mendarat di Bab 3.
+         */
+        const slots = mascots.map((_, i) => (i + 0.5) / mascots.length);
 
         mascots.forEach((mascot, index) => {
             const isRight = index % 2 === 1;
@@ -879,7 +894,7 @@
             mascot.classList.toggle('quest-mascot--right', isRight);
             mascot.classList.toggle('quest-mascot--left', !isRight);
 
-            const ratio = slots[index % slots.length];
+            const ratio = slots[index] ?? (index + 0.5) / mascots.length;
             const base = listTop + listHeight * ratio - mascotH / 2;
             const top = relocate(base);
 
