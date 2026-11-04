@@ -5,6 +5,7 @@
 
     $items = [
         ['route' => 'dashboard', 'active' => ['dashboard', 'home'], 'label' => 'Dasbor', 'icon' => 'home'],
+        ['route' => 'schedule.index', 'active' => ['schedule.*'], 'label' => 'Jadwal', 'icon' => 'calendar'],
         ['route' => 'quests.index', 'active' => ['quests.*'], 'label' => 'Peta Misi', 'icon' => 'map'],
         ['route' => 'quiz', 'active' => ['quiz*'], 'label' => 'Kuis Interaktif', 'icon' => 'quiz'],
         ['route' => 'achievements', 'active' => ['achievements'], 'label' => 'Pencapaian', 'icon' => 'medal'],

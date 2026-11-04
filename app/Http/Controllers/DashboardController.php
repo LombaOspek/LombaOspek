@@ -10,6 +10,7 @@ use App\Services\EngagementService;
 use App\Services\SideQuestService;
 use App\Services\LeaderboardService;
 use App\Services\ProgressionService;
+use App\Services\ScheduleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\View\View;
@@ -18,6 +19,7 @@ class DashboardController extends Controller
 {
     public function __construct(
         private readonly ProgressionService $progression,
+        private readonly ScheduleService $schedule,
         private readonly LeaderboardService $leaderboard,
         private readonly AchievementService $achievements,
         private readonly CertificateService $certificates,
@@ -117,6 +119,9 @@ class DashboardController extends Controller
             'orientationEnded' => $this->progression->hasEnded(),
             'recentXp' => $user->xpTransactions()->latest('id')->limit(4)->get(),
             'focus' => $focus,
+            // Agenda hari ini dari tabel jadwal, supaya dashboard menyebut
+            // acara yang mendahului modul - bukan hanya nomor hari.
+            'todayAgenda' => $this->schedule->forDay($user, $this->progression->effectiveDay()),
             'nextUp' => $nextUp,
             'chapters' => $chapters,
             'dailyChallenges' => $dailyChallenges,

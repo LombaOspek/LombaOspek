@@ -308,6 +308,49 @@
                             </li>
                         @endforelse
                     </ul>
+
+                    {{--
+                        Agenda hari ini.
+
+                        Ditempatkan di dalam kartu Fokus supaya hubungannya jelas:
+                        acara pagi ini, lalu modul yang harus dikerjakan setelahnya.
+                        Tanpa ini mahasiswa hanya melihat nomor modul tanpa tahu
+                        seminar atau apel apa yang mendahuluinya.
+                    --}}
+                    @if ($todayAgenda->isNotEmpty())
+                        <div class="mt-3 border-t-2 border-dashed border-ink/20 pt-2.5">
+                            <p class="flex items-center gap-1.5 text-[0.6rem] font-extrabold uppercase tracking-[0.12em] text-ink-faint">
+                                <x-icon name="calendar" class="size-3" :stroke="2.2" />
+                                Agenda hari ini
+                            </p>
+
+                            <ul class="mt-1.5 flex flex-col gap-1">
+                                @foreach ($todayAgenda as $agenda)
+                                    <li class="flex items-start gap-2 text-[0.7rem]">
+                                        <span class="w-14 shrink-0 font-mono font-bold text-brand-deep">
+                                            {{ substr($agenda['schedule']->time_range ?? '—', 0, 5) }}
+                                        </span>
+                                        <span class="min-w-0 flex-1 font-semibold leading-snug">
+                                            {{ $agenda['schedule']->title }}
+                                            @if ($agenda['schedule']->location)
+                                                <span class="block text-[0.62rem] font-medium text-ink-faint">
+                                                    {{ $agenda['schedule']->location }}
+                                                </span>
+                                            @endif
+                                        </span>
+                                    </li>
+                                @endforeach
+                            </ul>
+
+                            <a
+                                href="{{ route('schedule.index') }}"
+                                class="mt-2 inline-flex items-center gap-1 text-[0.64rem] font-extrabold text-brand-deep underline decoration-dotted underline-offset-2 hover:text-brand"
+                            >
+                                Lihat jadwal lengkap
+                                <x-icon name="arrow-right" class="size-3" :stroke="2.4" />
+                            </a>
+                        </div>
+                    @endif
                 </div>
             </section>
 

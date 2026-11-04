@@ -16,6 +16,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuestBuilderController;
 use App\Http\Controllers\RewardController;
 use App\Http\Controllers\SideQuestController;
+use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\QuestController;
 use App\Http\Controllers\QuizController;
 use App\Http\Controllers\VerificationController;
@@ -98,6 +99,13 @@ Route::middleware(['auth', 'activity'])->group(function (): void {
     /*
      * Side Quest: misi sosial opsional. Tidak memblokir modul utama.
      */
+    /*
+     * Jadwal orientasi: acara per hari, masing-masing tertaut ke modul yang
+     * harus dikerjakan setelahnya. Ini yang membuat peta misi tidak berdiri
+     * sendiri — seminar selesai, kuis terbuka.
+     */
+    Route::get('/jadwal', [ScheduleController::class, 'index'])->name('schedule.index');
+
     Route::get('/misi-samping', [SideQuestController::class, 'index'])->name('side-quests.index');
     Route::post('/misi-samping/{quest}/mulai', [SideQuestController::class, 'start'])
         ->name('side-quests.start');
