@@ -96,3 +96,23 @@ Kode gugus memakai **inisial kata + hash 3 huruf** dari nama prodi
 "Pendidikan Bahasa Inggris" dan "Pendidikan Bahasa dan Sastra Indonesia"
 sama-sama menjadi `PENDID`, sehingga anggota dua prodi tercampur ke satu gugus.
 Ada tes regresi untuk ini (`RebuildGroupsTest`).
+
+## Checklist deploy
+
+Dua hal yang mudah terlewat dan membuat fitur tampak rusak:
+
+```bash
+php artisan storage:link
+```
+
+Tanpa symlink ini, gambar hadiah yang diunggah lewat `/admin/bursa` tersimpan
+tetapi **404** saat ditampilkan. Unggahan berhasil, path benar, gambarnya tidak
+muncul.
+
+```bash
+php artisan demo:passwords --role=lo
+```
+
+Hanya untuk demo. `lo:generate` membuat sandi acak yang hanya ada di CSV,
+sehingga halaman LO tidak bisa dimasuki tanpa menjalankan perintah ini.
+Perintah ini menolak berjalan di `APP_ENV=production` tanpa `--force`.

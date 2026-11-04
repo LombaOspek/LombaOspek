@@ -1024,26 +1024,43 @@ Sebelum import massal, pastikan sudah ada:
 
 ## 12. Akun Demo untuk Demonstrasi
 
-Dari seeder, semuanya bersandi `password`:
+Semua bersandi `password`. Kolom gugus di bawah adalah penempatan **setelah**
+`groups:rebuild` (satu gugus = satu program studi), bukan nama gugus lama.
 
-| Peran | ID | Nama | Gugus |
-|---|---|---|---|
-| Mahasiswa | `202653033` | Aldiansyah Fayruz | Kelompok 04 — Garuda |
-| Mahasiswa | `202653044` | Muhammad Viza Fairuzzeka | Kelompok 04 — Garuda |
-| Mahasiswa | `202653078` | Bagas Dwi Prasetyo | Kelompok 04 — Garuda |
-| Mahasiswa | `202653067` | Vicko Amelino Syahputra | Kelompok 02 — Elang |
-| Mahasiswa | `202653012` | Aisyah Nur Fadhilah | Kelompok 02 — Elang |
-| Mahasiswa | `202653101` | Citra Ayu Lestari | Kelompok 01 — Merpati |
-| Mahasiswa | `202653055` | Dimas Arya Saputra | Kelompok 03 — Kancil |
-| LO | `LO-2022-001` | Kak Nissa | Kelompok 04 — Garuda |
-| LO | `LO-2022-002` | Kak Syakirah | Kelompok 01 — Merpati |
-| LO | `LO-2022-003` | Kak Dimas | Kelompok 02 — Elang |
-| LO | `LO-2022-004` | Kak Rahul | Kelompok 03 — Kancil |
-| Admin | `ADMIN-01` | Dr. Rian Ardianto | — |
+| Peran | ID | Nama | Jurusan | Gugus |
+|---|---|---|---|---|
+| Mahasiswa | `202653033` | Aldiansyah Fayruz | Sistem Informasi | Sistem Informasi 2 |
+| Mahasiswa | `202653044` | Muhammad Viza Fairuzzeka | Sistem Informasi | Sistem Informasi 2 |
+| Mahasiswa | `202653012` | Aisyah Nur Fadhilah | Sistem Informasi | Sistem Informasi 2 |
+| Mahasiswa | `202653067` | Vicko Amelino Syahputra | Sistem Informasi | Sistem Informasi 3 |
+| Mahasiswa | `202653101` | Citra Ayu Lestari | Sistem Informasi | Sistem Informasi 3 |
+| Mahasiswa | `202653078` | Bagas Dwi Prasetyo | Informatika | Informatika 1 |
+| Mahasiswa | `202653055` | Dimas Arya Saputra | Informatika | Informatika 1 |
+| LO | `LO-2022-001` | Kak Nissa | Sistem Informasi | Sistem Informasi 1 |
+| LO | `LO-2022-002` | Kak Syakirah | Sistem Informasi | Sistem Informasi 1 |
+| LO | `LO-2022-003` | Kak Dimas | Sistem Informasi | Sistem Informasi 1 |
+| LO | `LO-2022-004` | Kak Rahul | Informatika | Informatika 1 |
+| Admin | `ADMIN-01` | Dr. Rian Ardianto | Sistem Informasi | — (admin tidak bergugus) |
 
-Pasangan yang dipakai untuk menguji batas wewenang LO:
-`202653033` (gugus 04) sebagai mahasiswa, `LO-2022-001` sebagai LO yang **berhak**,
-dan `LO-2022-002` (gugus 01) sebagai LO yang harus **ditolak**.
+Pasangan untuk menguji batas wewenang LO: `202653033` (Sistem Informasi 2)
+sebagai mahasiswa, `LO-2022-001` sebagai LO yang **berhak**, dan `LO-2022-004`
+(Informatika) sebagai LO yang harus **ditolak** karena beda jurusan.
+
+### Sandi akun LO hasil `lo:generate`
+
+`lo:generate` membuat sandi **acak** per akun dan menampilkannya sekali. Untuk
+demo, seragamkan dulu:
+
+```bash
+php artisan demo:passwords --role=lo          # semua LO -> "password"
+php artisan demo:passwords --role=all --password=demo123
+```
+
+Perintah ini menolak berjalan di `APP_ENV=production` tanpa `--force`, karena
+menyeragamkan sandi di server nyata sama dengan membuka semua akun.
+
+**Untuk orientasi sungguhan:** ganti LO uji ini dengan LO asli sebelum hari-H.
+Akun uji mudah dikenali — nama berawalan `LO ` dan email `@lo.umk.ac.id`.
 
 ## 13. Skrip video demo (target 3 menit)
 
@@ -1418,3 +1435,77 @@ salah tidak mengunci, bisa dimatikan).
 | Halaman admin 500 | Rute di grup `admin` bernama `admin.groups.show`, bukan `groups.show` | Semua `route()` diberi prefix `admin.` |
 | Halaman detail gugus 500 | `route('groups.members.destroy')` tanpa prefix | idem |
 | Sertifikat tidak menampilkan syarat sosial | Pesan syarat hanya ada di service, belum dirender | Ditambahkan di view, terpisah dari pesan modul |
+
+
+## 4 November 2026 — audit kesiapan demo
+
+### 14.17 `storage:link` belum ada — gambar hadiah tidak akan tampil
+
+**Masalah:** fitur unggah gambar hadiah (3b) menyimpan ke disk `public`, tetapi
+symlink `public/storage` belum pernah dibuat. Unggahan berhasil, path tersimpan,
+dan gambar **404** saat ditampilkan. Ini bug di fitur yang baru dibuat, ditemukan
+justru saat mengujinya.
+
+**Perbaikan:** `php artisan storage:link` (wajib dijalankan saat deploy, dicatat
+di `docs/GUGUS.md` bagian deploy).
+
+**Verifikasi:** unggah PNG 4×4 lewat form sungguhan → tersimpan di
+`storage/app/public/rewards/`, muncul di tabel dengan `naturalWidth: 4`
+(artinya gambar benar-benar termuat, bukan 404).
+
+### 14.18 Akun LO tidak bisa dipakai demo
+
+**Masalah:** `lo:generate` membuat 102 LO bersandi **acak**, dan sandinya hanya
+tercatat di `storage/app/lo-credentials-*.csv`. Untuk demo di depan juri, panitia
+harus membuka CSV dan mencari satu baris. Lebih buruk: seluruh halaman LO
+(`/lo/verifikasi`, `/lo/tiket`) tidak bisa diuji sama sekali.
+
+**Perbaikan:** `php artisan demo:passwords --role=lo`. Menolak berjalan di
+`APP_ENV=production` tanpa `--force`, karena menyeragamkan sandi di server nyata
+sama dengan membuka semua akun.
+
+**Verifikasi:** setelah dijalankan, ketiga halaman LO terbuka (1000 / 418 / 2857
+karakter) tanpa error dan tanpa overflow. `DemoPasswordsTest` (7 tes) mengunci
+sandi benar-benar berlaku, peran lain tidak tersentuh, dan penolakan produksi.
+
+### 14.19 Data sisa uji menempel di database
+
+**Masalah:** dua gugus dari pengujian manual ("Kelompok 05 - Badak",
+"Kelompok 07 — Rajawali Uji") masih ada dan menempel ke LO asli, plus satu
+mahasiswa (Bagas Pratama) yang saya keluarkan saat menguji panel anggota.
+
+Gugus sisa ini berbahaya: ia tidak sejurusan dengan LO-nya, sehingga
+menghidupkan kembali pelanggaran aturan yang baru diperbaiki.
+
+**Perbaikan:** gugus sisa dihapus, anggotanya dipindah ke gugus sejurusan,
+mahasiswa dan LO yang kehilangan penempatan dikembalikan. Hasilnya 51 gugus,
+0 tanpa gugus kecuali admin (yang memang tidak butuh gugus).
+
+### 14.20 FLOW.md menyebut gugus yang sudah tidak ada
+
+Tabel akun demo masih memakai nama gugus pra-rebuild ("Kelompok 04 — Garuda").
+Setelah gugus disusun per prodi, nama itu tidak ada lagi — dokumen yang dikirim
+ke juri akan salah. Tabel ditulis ulang dengan penempatan nyata, ditambah
+jurusan dan catatan `demo:passwords`.
+
+**Sweep seluruh halaman** (9 halaman mahasiswa, 3 admin, 3 LO) setelah
+perbaikan: **0 error, 0 overflow**.
+
+---
+
+## Bug yang ditemukan pada audit ini
+
+| Bug | Dampak | Perbaikan |
+|---|---|---|
+| `public/storage` tidak ada | Gambar hadiah 404 padahal unggahan berhasil | `php artisan storage:link` |
+| Sandi LO acak tidak terdokumentasi | Halaman LO tidak bisa didemokan sama sekali | `demo:passwords --role=lo` |
+| 2 gugus sisa uji menempel ke LO | Pelanggaran aturan jurusan hidup lagi | Gugus dihapus, anggota dipindah |
+| 1 mahasiswa tanpa gugus | Anggota hilang dari Gugus Wars | Dikembalikan ke gugus sejurusan |
+| FLOW.md menyebut gugus lama | Dokumen juri faktual salah | Tabel ditulis ulang dari database |
+
+## Checklist deploy (tambahan)
+
+```bash
+php artisan storage:link      # WAJIB, kalau tidak gambar hadiah 404
+php artisan demo:passwords --role=lo   # hanya untuk demo, jangan di produksi
+```
