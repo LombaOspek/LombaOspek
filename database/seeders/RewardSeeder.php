@@ -23,12 +23,32 @@ class RewardSeeder extends Seeder
             [
                 'code' => 'LANYARD-01',
                 'name' => 'Lanyard OspekQuest',
-                'description' => 'Lanyard resmi orientasi dengan cetakan logo Fakultas Teknik.',
+                'description' => 'Lanyard resmi orientasi dengan cetakan logo Universitas Muria Kudus.',
                 'category' => 'merchandise',
                 'cost_coins' => 150,
                 'stock' => 300,
                 'quota_per_user' => 1,
                 'sort_order' => 10,
+            ],
+            [
+                /*
+                 * Lanyard kedua dari UKM.
+                 *
+                 * Sebelumnya baris ini TIDAK ada di seeder, padahal peta gambar
+                 * di bawahnya sudah menunjuk `rewards/lanyard-02.jpg`. Di
+                 * database pengembangan barisnya dibuat manual, jadi katalog
+                 * tampak lengkap; tetapi `migrate --seed` di server produksi
+                 * hanya menghasilkan 8 hadiah dan berkas lanyard-02.jpg menjadi
+                 * yatim - gambar ada, hadiahnya tidak.
+                 */
+                'code' => 'LANYARD-02',
+                'name' => 'Lanyard Muria Computing Club',
+                'description' => 'Lanyard merah komunitas Muria Computing Club, tali ID dengan kartu peserta.',
+                'category' => 'merchandise',
+                'cost_coins' => 150,
+                'stock' => 200,
+                'quota_per_user' => 1,
+                'sort_order' => 15,
             ],
             [
                 'code' => 'PIN-01',
@@ -43,7 +63,7 @@ class RewardSeeder extends Seeder
             [
                 'code' => 'STIKER-01',
                 'name' => 'Paket Stiker Kampus',
-                'description' => 'Lima stiker vinyl tahan air berisi ikon kampus dan WIRA.',
+                'description' => 'Empat stiker vinyl tahan air: logo kampus, bintang, tahun, dan tema Smart Eco.',
                 'category' => 'merchandise',
                 'cost_coins' => 100,
                 'stock' => 400,

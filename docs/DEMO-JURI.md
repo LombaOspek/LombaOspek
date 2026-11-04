@@ -123,7 +123,7 @@ Cek cepat di browser:
 | URL | Harus menampilkan |
 |---|---|
 | `/login` | form masuk, ada favicon di tab |
-| `/bursa` | 9 kartu hadiah **bergambar semua** |
+| `/bursa` | 9 kartu hadiah, **semua bergambar** (900×900) |
 | `/jadwal` | 8 hari, 14 agenda |
 | `/misi` | 13 modul, urutan hari menanjak |
 | `/admin/bursa` | panel "Pindai QR Klaim" |
@@ -215,8 +215,12 @@ Tunjukkan bahwa **acara dan modul terhubung**:
 
 ### Langkah 6 — Bursa Hadiah (`/bursa`)
 
-1. **9 hadiah bergambar**: lanyard, pin, stiker, mug, tote bag, kaos, voucher,
-   pulsa.
+1. **9 hadiah, semuanya bergambar 900×900**: kaos orientasi, mug keramik,
+   tote bag kanvas, 2 lanyard (OspekQuest + Muria Computing Club), pin enamel,
+   paket stiker, voucher kantin, pulsa digital.
+   Gambar memakai **logo UMK resmi** dari `umk.ac.id`; produk yang tidak punya
+   foto bersih (lanyard, pin, stiker, voucher, pulsa) digambar sendiri agar
+   tidak membawa merek pihak lain.
 2. Di ponsel tampil **2 kolom** supaya tidak perlu menggulir jauh.
 3. Tukar Lanyard (150 koin) → muncul **kode klaim `OQ-XXXX-XXXX`** + **QR**.
 4. Tunjukkan QR-nya: *"panitia memindai ini, tidak perlu mengetik kode."*
