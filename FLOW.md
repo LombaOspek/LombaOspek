@@ -1616,3 +1616,53 @@ hitam pekat bersudut kotak di atas track krem.
 **Catatan tes:** `assertStringNotContainsString('#b9b3a4', $css)` menandai
 komentar penjelasan sendiri. Asersi harus memeriksa **deklarasi**
 (`background: #b9b3a4`), bukan string mentah di seluruh berkas.
+
+
+### 14.24 Ikon tab (favicon)
+
+**Temuan:** `public/favicon.ico` berukuran **0 byte** sejak scaffold Laravel, dan
+tidak ada satu pun tag `<link rel="icon">` di layout. Browser lalu menampilkan
+ikon dokumen abu-abu di tab — pada aplikasi yang dipakai panitia dengan banyak
+tab terbuka, itu membuat OspekQuest tidak bisa dibedakan.
+
+**Kenapa ikonnya digambar dua kali.** Pada 16px, kanvas 100 unit berarti 1 unit
+= 0,16 piksel: outline hitam yang tajam di 512px menjadi 0,4px dan hilang,
+sementara cincin + ekor menyatu jadi gumpalan. Jadi ada dua optik:
+
+| Ukuran | Perlakuan |
+|---|---|
+| 32/48/64 px | cincin emas ber-outline hitam + ekor diagonal (detail penuh) |
+| 16/24 px | tanpa outline per-bentuk, cincin lebih tebal, ekor bergaris luar hitam |
+
+Bentuk akhir dipilih dengan **membandingkan empat kandidat** yang diperbesar
+14x, bukan menebak: kandidat dengan ekor bergaris luar hitam menang karena
+ekornya tetap terpisah dari cincin pada ukuran tab.
+
+**Berkas yang dibuat:**
+
+| Berkas | Isi |
+|---|---|
+| `favicon.ico` | 5 frame terpisah (16/24/32/48/64), ditulis sebagai ICO manual |
+| `favicon-16.png`, `favicon-32.png` | untuk `<link sizes>` modern |
+| `apple-touch-icon.png` | 180px, tanpa bingkai — iOS membulatkan sudut sendiri |
+| `icon-192.png`, `icon-512.png` | maskable, safe zone 18% |
+| `site.webmanifest` | PWA: `start_url`, `theme_color` WIRA, 2 ikon |
+
+**Kenapa ICO ditulis manual:** menyimpan lewat PIL dengan daftar `sizes`
+menyimpan **satu** gambar lalu me-resample-nya, sehingga ikon 16px menjadi
+versi kecil dari gambar detail dan justru lebih buruk. Penulisan manual
+memastikan tiap ukuran memakai gambarnya sendiri — terverifikasi: 5 entri,
+semuanya PNG valid dengan ukuran berbeda.
+
+**Tag dipasang di 4 tempat**, bukan satu: `layouts/app.blade.php` **dan** tiga
+halaman yang menulis `<head>` sendiri — login, sertifikat, verifikasi publik.
+Login adalah halaman pertama yang dilihat orang, jadi tab tanpa ikon di sana
+paling terlihat.
+
+**Verifikasi:** 4 tag hadir di 6 halaman (login, dashboard, misi, admin/akun,
+bursa, verifikasi); kelima berkas didekode `createImageBitmap` dengan ukuran
+benar (16/32/64/180 px); dengan cache kosong browser benar-benar mengambil
+`/favicon.ico` dan server membalas `200 image/vnd.microsoft.icon`.
+
+**Catatan tes:** `assertFileExists` **lolos untuk berkas 0 byte** — itulah
+persis bug aslinya. Asersi harus juga memeriksa `filesize() > 100`.
