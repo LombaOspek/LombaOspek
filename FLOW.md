@@ -1127,3 +1127,186 @@ Video yang menang adalah yang punya satu kalimat posisi yang jelas, tiga momen
 > Di lingkungan demo sebelum tanggal orientasi, semua gerbang waktu otomatis terbuka
 > (`effectiveDay()` mengembalikan jumlah hari penuh), jadi tidak perlu menunggu tanggal
 > asli untuk memperlihatkan modul hari ke-8.
+
+---
+
+# 14. Riwayat Perubahan
+
+Catatan setiap tugas yang selesai: apa yang berubah, file utama, dan cara
+memverifikasinya. Bagian ini adalah sumber kebenaran untuk "apa yang sudah
+jadi" — rencana yang belum dikerjakan ada di `PLAN-2026-11-02.md`.
+
+## 4 November 2026
+
+### 14.1 Sumber koin dari aktivitas
+
+**Masalah:** `XpService::award()` tidak pernah menyentuh `users.coins`, jadi
+semua tombol Bursa berbunyi "Koin Kurang" meski mahasiswa sudah menuntaskan
+modul. Koin hanya bisa masuk lewat grant manual.
+
+**Perubahan:** `app/Services/CoinService.php` mengikuti pola `XpService`
+(`DB::transaction` + `lockForUpdate` + `idempotency_key` + `balance_after`),
+dipanggil berdampingan di lima titik yang sama: penyelesaian modul, penilaian
+kuis, lencana, kotak misteri, dan side quest. Idempotency key-nya identik
+dengan XP, sehingga koin dan XP bertambah bersama atau tidak sama sekali.
+
+Rasio sengaja tidak seragam: modul 10% XP, kuis 5%, side quest 100%, lencana
+50 tetap. Side quest dibayar paling besar karena opsional — insentifnya harus
+jauh lebih menarik daripada kewajiban.
+
+**Verifikasi:** `php artisan coins:backfill` (idempoten, ada `--dry-run`);
+`tests/Feature/CoinEconomyTest.php`; rekonsiliasi
+`SUM(coin_transactions.amount) == SUM(users.coins)`.
+
+### 14.2 Soft delete akun
+
+**Masalah:** `destroy()` melakukan hard delete, dan FK memakai
+`cascadeOnDelete` ke tujuh tabel riwayat (XP, bukti modul, klaim hadiah). Satu
+salah klik menghapus bukti permanen — tepat saat sengketa membutuhkannya.
+
+**Perubahan:** `User` memakai `SoftDeletes`. Akun hilang dari daftar dan tidak
+bisa login, tetapi riwayat utuh dan bisa dipulihkan. Hapus mewajibkan
+konfirmasi ketik NIM/nama, dan setiap hapus/pulihkan dicatat `Log::info`.
+
+**Verifikasi:** `tests/Feature/AccountLifecycleTest.php` — termasuk uji bahwa
+`xp_transactions` tetap ada setelah akun dihapus.
+
+### 14.3 Aturan LO satu jurusan
+
+**Masalah:** LO Akuntansi bisa membimbing gugus Teknik Mesin tanpa penolakan.
+
+**Perubahan:** `storeGroup()`, `store()`, dan `update()` menolak bila
+`mentor.major != jurusan gugus`, dengan pesan yang menyebut kedua jurusan.
+Form juga menyaring dropdown LO mengikuti prodi terpilih.
+
+**Catatan:** aturan "satu LO = satu gugus" sempat saya buat dan kemudian
+**dibatalkan** — itu bukan permintaan, dan dengan 4 LO untuk puluhan gugus ia
+memblokir pembuatan gugus sama sekali. Yang dibatasi adalah lintas jurusan.
+
+**Verifikasi:** `tests/Feature/AccountLifecycleTest.php`,
+`tests/Feature/AdminUiTest.php`; audit data nyata: 0 gugus dengan LO lintas
+jurusan.
+
+### 14.4 CRUD akun lewat modal
+
+**Perubahan:** satu modal untuk tambah / ubah / setel ulang sandi / hapus.
+Satu modal, bukan empat form tersembunyi per baris: dengan 10 baris × 4 aksi
+itu berarti 40 form di DOM. Mode arsip menampilkan akun terhapus dengan tombol
+pulihkan.
+
+**Verifikasi:** `tests/Feature/AccountCrudUiTest.php`.
+
+### 14.5 Import CSV berprogress
+
+**Masalah yang ditemukan saat menguji:** batch berbasis jumlah baris (200)
+dikali bcrypt cost 12 (~460 ms/sandi) = 92 detik per batch. Request mati
+sebelum selesai, respons tidak pernah kembali, progress bar diam di 0%.
+
+**Perubahan:** batch dibatasi **anggaran waktu** (2,5 detik), bukan jumlah
+baris. Import massal memakai cost 10 (~100 ms). Penanda selesai memakai EOF,
+bukan perbandingan limit.
+
+**Verifikasi:** `tests/Feature/StudentImportProgressTest.php`; di browser
+progres terukur 8 → 13 → 17 → 21 → 25 → 30 → 34 → 38 → 42% dengan 19 baris per
+batch.
+
+### 14.6 Dropdown custom & paginasi Indonesia
+
+**Perubahan:** `<x-dropdown>` berbasis button + listbox ARIA (select bawaan
+tidak bisa digayakan karena picker-nya digambar OS), lengkap dengan keyboard,
+type-ahead, pencarian, dan flip ke atas. `<x-pagination>` berbahasa Indonesia
+dengan jendela nomor.
+
+**Bug yang ditemukan:** (a) dropdown terbuka lalu menutup sendiri dalam 7 ms
+karena `scrollIntoView` menggulir halaman dan listener scroll global
+mematikannya; (b) label field tampil sebagai nama opsi terakhir karena loop
+`@foreach` menimpa prop `$label`.
+
+**Verifikasi:** `tests/Feature/AdminUiTest.php`.
+
+### 14.7 Gugus disusun ulang per program studi
+
+**Temuan:** 5 gugus untuk 17 prodi → **2.241 dari 3.070 mahasiswa** berada di
+gugus jurusan lain. Kelompok 04 sendirian berisi 15 prodi.
+
+**Perubahan:** `php artisan groups:rebuild` (+ `--dry-run`, `--size`).
+
+**Bug yang ditemukan:** slug kode gugus 6 huruf membuat "Teknik Informatika"
+dan "Teknik Industri" sama-sama `TEKNIK`, sehingga anggota dua prodi tercampur
+ke satu gugus. Kode kini memakai inisial + hash.
+
+**Verifikasi:** `tests/Feature/RebuildGroupsTest.php`; data nyata: 51 gugus,
+0 anggota beda jurusan, 0 kode duplikat. Dokumentasi: `docs/GUGUS.md`.
+
+### 14.8 LO otomatis dua per gugus
+
+**Masalah:** setelah gugus disusun per prodi, hanya ada 4 LO (semuanya
+Fakultas Teknik) → 31 dari 51 gugus tanpa pembimbing.
+
+**Perubahan:** `php artisan lo:generate --per-group=2` membuat akun LO
+sejurusan untuk setiap gugus, idempoten, dengan laporan kredensial sekali
+tampil + CSV di `storage/app/`. Melonggarkan aturan jurusan **bukan** jalan
+keluar — itu merusak validasi dan membuat Gugus Wars tidak adil.
+
+**Bug yang ditemukan:** slug jurusan memakai inisial sehingga "Agribisnis" dan
+"Agroteknologi" sama-sama `A` → NIM duplikat. Diperbaiki dengan awalan kata
+bermakna + hash.
+
+**Verifikasi:** `tests/Feature/GroupPaginationAndLoTest.php`; data nyata: 102
+LO, 51 gugus semuanya ≥2 LO sejurusan, NIM unik.
+
+**Peringatan:** LO ini akun uji untuk demo. Ganti dengan LO sungguhan sebelum
+hari-H karena mereka yang memverifikasi bukti mahasiswa.
+
+### 14.9 Perbaikan tampilan Gugus Wars
+
+**Tiga keluhan, tiga akar berbeda:**
+
+1. **Batang biru/kuning tidak cocok dengan lingkaran VS.** Batang dibagi rata
+   `w-1/2` sementara VS bergeser mengikuti rasio — pada 73% keduanya menunjuk
+   posisi berbeda. Kini lebar batang memakai `--war-ratio` yang sama.
+2. **Garis hitam tidak berguna.** `.war-rope` merender garis selebar wadah
+   yang tidak menandai apa pun. Dihapus, diganti garis putus-putus tipis di
+   titik imbang.
+3. **Balon "Terbang Tinggi!" hilang di mobile.** Kelas `hidden sm:block`
+   menyembunyikannya. Kini tampil di **kiri** maskot pada mobile (flex-row),
+   kembali di atas pada desktop (flex-col), dengan ekor balon ikut berputar.
+
+**Verifikasi:** diukur di browser — batang 72% vs rasio 0.728; `.war-rope`
+tidak ada; balon di x=100–172 sementara maskot mulai x=178.
+
+### 14.10 Paginasi gugus & paginasi tanpa reload
+
+**Masalah:** daftar gugus memanjang (51 gugus), dan setiap klik halaman
+memuat ulang seluruh halaman admin.
+
+**Perubahan:** `<x-group-list>` dengan paginasi 8 per halaman memakai parameter
+`gugus_page` (terpisah dari `page` tabel akun). `ajax-pagination.js` meminta
+**fragmen** (header `X-Partial: 1`) sehingga server hanya mengirim tabel dan
+daftar gugus, lalu `history.replaceState` memperbarui URL. Tanpa JavaScript
+tautan `<a href>` tetap berfungsi.
+
+**Bug yang ditemukan saat menguji:** fragmen mengembalikan `Response` padahal
+signature method `: View` → 500. Selain itu partial tabel butuh `$roles`,
+`$groups`, dan `$majors` yang belum diteruskan.
+
+**Verifikasi:** `tests/Feature/GroupPaginationAndLoTest.php`; di browser URL
+berubah, tabel berganti, tanpa navigasi halaman.
+
+### 14.11 Keterangan tombol arsip
+
+Tombol "Lihat arsip" kini punya `title` yang menjelaskan fungsinya dan badge
+jumlah akun terarsip, agar tidak perlu ditebak.
+
+---
+
+## Cara memverifikasi seluruh riwayat ini
+
+```bash
+php artisan test                    # 215 tes / 1964 assertions
+php artisan groups:rebuild --dry-run
+php artisan lo:generate --dry-run
+```
+
+Uji browser (CDP) untuk: balon mobile di kiri maskot, batang Wars mengikuti
+rasio, paginasi gugus, paginasi tanpa reload, dan tombol arsip.

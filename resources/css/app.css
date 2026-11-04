@@ -556,13 +556,18 @@
    Geseran dibatasi +/-42% (bukan 50%) supaya penanda VS selalu terlihat di
    dalam klip dan tidak ada anak elemen yang menonjol keluar kartu saat
    kedudukan sangat timpang. */
-.war-rope {
+/*
+ * Gugus Wars: pembatas warna dan penanda VS WAJIB memakai satu sumber rasio.
+ *
+ * Dulu batang dibagi rata 50/50 sementara VS bergeser mengikuti rasio, jadi
+ * pada 73% vs 27% keduanya menunjuk posisi berbeda. Rasio sekarang dipasang
+ * di wadah, dan batang membacanya lewat calc().
+ */
+.war-arena {
     --war-ratio: 0.5;
-    transform: translateX(calc((var(--war-ratio) - 0.5) * 84%));
-    transition: transform 900ms cubic-bezier(0.34, 1.2, 0.64, 1);
 }
 
-/* Bendera penanda tengah tali ikut tertarik namun tetap tegak. */
+/* Bendera penanda tengah ikut tertarik namun tetap tegak. */
 .war-flag {
     transform: translateX(calc((var(--war-ratio) - 0.5) * 84%)) rotate(-3deg);
     transition: transform 900ms cubic-bezier(0.34, 1.2, 0.64, 1);
@@ -729,7 +734,6 @@
     }
 
     /* Tali tarik tambang tetap menampilkan hasil akhirnya, hanya tanpa gerak. */
-    .war-rope,
     .war-flag {
         transition: none !important;
     }

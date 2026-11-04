@@ -11,6 +11,7 @@ import { initImportProgress } from './import-progress.js';
 import { initDropdowns } from './dropdown.js';
 import { initMajorOfficerLink } from './major-officer.js';
 import { initAccountActions } from './account-actions.js';
+import { initAjaxPagination } from './ajax-pagination.js';
 
 const prefersReducedMotion = () =>
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -192,6 +193,7 @@ export function boot() {
     initDropdowns();
     initMajorOfficerLink();
     initAccountActions();
+    initAjaxPagination();
 
     // Level halaman sebelumnya: dipakai untuk mendeteksi kenaikan level.
     const root = document.documentElement;
@@ -463,6 +465,29 @@ window.Ospek = {
     setSound(value) {
         soundEnabled = Boolean(value);
         document.documentElement.dataset.sound = soundEnabled ? '1' : '0';
+    },
+
+    /**
+     * Pasang ulang komponen interaktif pada DOM yang baru diganti.
+     *
+     * Dipakai paginasi AJAX: setelah tabel ditukar, dropdown dan tombol aksi
+     * di dalamnya belum punya listener, jadi tanpa ini halaman terlihat benar
+     * tetapi tidak bisa dipakai.
+     */
+    rebind() {
+        /*
+         * Pasang ulang HANYA komponen yang elemennya ikut ditukar.
+         *
+         * initDropdowns() dan initAccountActions() sudah memasang listener di
+         * `document` (delegasi), jadi elemen baru otomatis tertangani dan
+         * TIDAK perlu dipasang ulang. Memanggil ulang initDropdowns() justru
+         * mendaftarkan listener `document` kedua - dan listener lama menutup
+         * panel yang baru dibuka, sehingga dropdown mati setelah paginasi AJAX.
+         *
+         * initMajorOfficerLink() aman: ia memasang listener per elemen dan
+         * melewati elemen yang sudah ditandai.
+         */
+        initMajorOfficerLink();
     },
 };
 

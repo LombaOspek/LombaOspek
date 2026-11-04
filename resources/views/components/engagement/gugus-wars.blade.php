@@ -60,32 +60,42 @@
             @endforeach
         </div>
 
-        {{-- Lintasan tali: garis tengah bergerigi, penanda di posisi rasio. --}}
+        {{-- Lintasan tali: pembatas warna dan penanda VS digeser oleh rasio yang SAMA. --}}
         <div class="relative mt-3" role="img" aria-label="Tali tarik tambang: {{ $left['name'] }} {{ $leftPct }} persen, {{ $right['name'] }} {{ 100 - $leftPct }} persen">
-            {{-- overflow-hidden wajib: tali digeser sampai +/-100% lebarnya, jadi
+            {{-- overflow-hidden wajib: penanda digeser sampai +/-100% lebarnya, jadi
                  tanpa klip ia menonjol keluar kartu (terukur 3 elemen keluar
                  batas di 360/393/430px walau body tidak ikut melebar). --}}
-            <div class="relative h-8 overflow-hidden rounded-sm border-2 border-ink bg-paper-dim">
-                {{-- Kiri (biru) vs kanan (kuning): lebar tetap 50/50 supaya tali
-                     terlihat seperti tali, bukan bar progres biasa. --}}
-                <div class="absolute inset-y-0 left-0 w-1/2 bg-brand"></div>
-                <div class="absolute inset-y-0 right-0 w-1/2 bg-gold"></div>
+            <div
+                class="war-arena relative h-8 overflow-hidden rounded-sm border-2 border-ink bg-paper-dim"
+                style="--war-ratio: {{ $ratio }}"
+                data-war-arena
+            >
+                {{--
+                    Batang biru/kuning mengikuti --war-ratio, BUKAN 50/50 tetap.
 
-                {{-- Tali: digeser sesuai rasio. --}}
+                    Sebelumnya batang dibagi rata di tengah sementara VS bergeser
+                    mengikuti rasio: pada 73% vs 27%, VS ada di 73% tetapi batas
+                    warna tetap di 50% - dua penanda posisi yang saling
+                    bertentangan. Sekarang keduanya memakai variabel yang sama.
+                --}}
                 <div
-                    class="war-rope absolute inset-y-0 left-0 flex w-full items-center justify-center"
-                    style="--war-ratio: {{ $ratio }}"
-                    data-war-rope
-                >
-                    <span class="h-1.5 w-full bg-ink"></span>
-                </div>
+                    class="absolute inset-y-0 left-0 bg-brand"
+                    style="width: calc(var(--war-ratio) * 100%)"
+                    data-war-bar-left
+                ></div>
+                <div
+                    class="absolute inset-y-0 right-0 bg-gold"
+                    style="width: calc(100% - var(--war-ratio) * 100%)"
+                    data-war-bar-right
+                ></div>
 
-                {{-- Bendera tengah: menunjukkan siapa yang sedang menarik. --}}
-                <div
-                    class="war-flag absolute inset-y-0 left-0 flex w-full items-center justify-center"
-                    style="--war-ratio: {{ $ratio }}"
-                    data-war-flag
-                >
+                {{-- Garis tengah putus-putus: penanda "imbang" yang bermakna,
+                     menggantikan garis hitam selebar wadah yang dulu tidak
+                     menandai apa pun. --}}
+                <div class="pointer-events-none absolute inset-y-0 left-1/2 w-0 -translate-x-1/2 border-l-2 border-dashed border-ink/40" aria-hidden="true"></div>
+
+                {{-- Lingkaran VS: penanda posisi tarikan saat ini. --}}
+                <div class="war-flag absolute inset-y-0 left-0 flex w-full items-center justify-center" data-war-flag>
                     <span class="grid size-6 place-items-center rounded-full border-2 border-ink bg-paper text-[0.5rem] font-extrabold">VS</span>
                 </div>
             </div>

@@ -8,6 +8,7 @@ use App\Models\QuestSubmission;
 use App\Models\User;
 use App\Services\StudentImportService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,22 +23,29 @@ use Illuminate\View\View;
  */
 class AccountController extends Controller
 {
-    public function index(Request $request): View
+    /**
+     * Daftar akun & gugus.
+     *
+     * Mengembalikan View untuk permintaan halaman penuh, atau Response untuk
+     * permintaan fragmen (paginasi tanpa reload) - karena itu tipe
+     * kembaliannya View|Response, bukan View saja.
+     */
+    public function index(Request $request): View|Response
     {
         abort_unless($request->user()->role->canManageAccounts(), 403);
 
         $role = $request->query('role');
-                $major = $request->query('major');
-                $arsip = $request->boolean('arsip');
+        $major = $request->query('major');
+        $arsip = $request->boolean('arsip');
 
-                /*
-                 * Filter arsip: akun yang di-soft-delete tidak muncul di daftar biasa,
-                 * sehingga tanpa tampilan ini tombol "Pulihkan" tidak akan pernah bisa
-                 * dipakai - akunnya sendiri tidak terlihat.
-                 */
-                $users = User::query()
-                    ->when($arsip, fn ($q) => $q->onlyTrashed())
-                    ->with('group:id,name,badge_color')
+        /*
+         * Filter arsip: akun yang di-soft-delete tidak muncul di daftar biasa,
+         * sehingga tanpa tampilan ini tombol "Pulihkan" tidak akan pernah bisa
+         * dipakai - akunnya sendiri tidak terlihat.
+         */
+        $users = User::query()
+            ->when($arsip, fn ($q) => $q->onlyTrashed())
+            ->with('group:id,name,badge_color')
             ->when($request->filled('q'), function ($q) use ($request): void {
                 $term = '%'.trim((string) $request->query('q')).'%';
 
@@ -51,7 +59,27 @@ class AccountController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $groups = Group::query()->withCount('members')->orderBy('name')->get();
+        /*
+         * Gugus dipaginasi: dengan aturan satu gugus = satu prodi, jumlahnya
+         * bisa puluhan (51 pada data nyata) dan daftar tanpa paginasi membuat
+         * halaman sangat panjang.
+         *
+         * Parameter query dipisah (`gugus_page`) karena tabel akun memakai
+         * `page` - kalau disatukan, membuka halaman 2 gugus akan ikut
+         * memindahkan halaman tabel akun.
+         */
+        $groupsPage = max(1, (int) $request->query('gugus_page', 1));
+
+        $groups = Group::query()
+            ->withCount('members')
+            ->orderBy('study_program')
+            ->orderBy('name')
+            ->paginate(8, ['*'], 'gugus_page', $groupsPage)
+            ->withQueryString();
+
+        // Daftar penuh untuk dropdown di form & modal: dropdown tidak boleh
+        // hanya berisi 8 gugus dari halaman yang sedang dibuka.
+        $allGroups = Group::query()->orderBy('study_program')->orderBy('name')->get();
 
         /*
          * Prodi dikelompokkan per fakultas untuk dropdown bergrup.
@@ -78,7 +106,7 @@ class AccountController extends Controller
                 // boleh membimbing beberapa gugus SEJURUSAN (jumlah LO selalu jauh
                 // lebih sedikit dari jumlah gugus). Yang dibatasi adalah lintas
                 // jurusan, bukan jumlah gugusnya.
-                $officersByMajor = [];
+        $officersByMajor = [];
 
         foreach (array_keys($majorsByFaculty) as $faculty) {
             foreach (array_keys($majorsByFaculty[$faculty]) as $program) {
@@ -89,9 +117,13 @@ class AccountController extends Controller
             }
         }
 
+        // Jumlah akun terarsip: tanpa angka ini tombol "Lihat arsip" tidak
+        // memberi petunjuk apakah ada isinya atau kosong.
+        $archivedCount = User::onlyTrashed()->count();
+
         $stats = [
             'students' => User::query()->where('role', UserRole::Student)->count(),
-            'groups' => $groups->count(),
+            'groups' => Group::query()->count(),
             'officers' => User::query()->where('role', UserRole::LiaisonOfficer)->count(),
             'verified_today' => QuestSubmission::query()
                 ->whereDate('reviewed_at', now()->toDateString())
@@ -99,9 +131,31 @@ class AccountController extends Controller
                 ->count(),
         ];
 
+        /*
+         * Paginasi tanpa reload: klien meminta fragmen, bukan halaman utuh.
+         *
+         * Mengirim ulang seluruh halaman berarti mengirim markup header,
+         * sidebar, form, dan modal yang tidak berubah - dengan 3.000+ akun itu
+         * pemborosan besar. Fragmen berisi tabel akun dan daftar gugus saja.
+         */
+        $wantsFragment = $request->header('X-Partial') === '1'
+            || $request->boolean('partial');
+
+        if ($wantsFragment) {
+            return response()->view('pages.admin.partials.accounts-fragment', [
+                'users' => $users,
+                'groups' => $groups,
+                'allGroups' => $allGroups,
+                'roles' => UserRole::cases(),
+                'filters' => ['q' => $request->query('q'), 'role' => $role, 'major' => $major, 'arsip' => $arsip],
+            ]);
+        }
+
         return view('pages.admin.accounts', [
             'users' => $users,
             'groups' => $groups,
+            'allGroups' => $allGroups,
+            'archivedCount' => $archivedCount,
             'stats' => $stats,
             'roles' => UserRole::cases(),
             'majors' => User::query()->whereNotNull('major')->distinct()->orderBy('major')->pluck('major'),

@@ -58,18 +58,36 @@ gugus dengan LO lintas jurusan : 0
 gugus tanpa LO                 : 31
 ```
 
-## Yang masih perlu dikerjakan panitia
+## Membuat LO agar setiap gugus punya pembimbing
 
-**31 gugus belum punya LO** karena tidak ada LO dari prodi tersebut. Ini bukan
-bug — aplikasi menolak menugaskan LO lintas jurusan.
+Setelah gugus disusun per prodi, awalnya hanya ada **4 LO** (semuanya Fakultas
+Teknik) sehingga **31 dari 51 gugus** tidak punya pembimbing. Melonggarkan
+aturan jurusan bukan jalan keluar — itu merusak validasi dan membuat Gugus Wars
+tidak adil.
 
-Tambahkan LO lewat halaman admin (**Tambah Akun** → peran *Liaison Officer* →
-jurusan sesuai), lalu buat atau tugaskan ulang gugusnya. Prodi yang belum punya
-LO sama sekali:
+```bash
+# Lihat rencananya
+php artisan lo:generate --dry-run
 
-- Semua prodi di luar Fakultas Teknik (Ekonomi, Hukum, FKIP, Pertanian, Psikologi)
+# Buat 2 LO per gugus
+php artisan lo:generate --per-group=2
+```
 
-Untuk orientasi nyata, LO sebaiknya direkrut minimal 1 per prodi.
+Perintah ini:
+- Membuat akun LO **sejurusan** dengan gugusnya, NIM berpola `LO-<prodi>-<urut>`
+- Idempoten: gugus yang sudah punya cukup LO dilewati
+- Menampilkan kredensial **sekali** dan menyimpannya ke
+  `storage/app/lo-credentials-<tanggal>.csv`
+- Menugaskan LO pertama sebagai `groups.mentor_id` untuk setiap gugus
+
+Hasil pada data nyata: **102 LO**, 51 gugus semuanya ≥2 LO sejurusan, NIM unik.
+
+### PERINGATAN UNTUK PRODUKSI
+
+Akun LO hasil perintah ini adalah **akun uji untuk demo**. Pada orientasi
+nyata, ganti dengan LO sungguhan sebelum hari-H karena merekalah yang menilai
+bukti mahasiswa. Akun uji mudah dikenali: nama berawalan `LO ` dan email
+berdomain `@lo.umk.ac.id`.
 
 ## Catatan teknis
 

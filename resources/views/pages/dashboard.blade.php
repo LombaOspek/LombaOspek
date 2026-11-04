@@ -61,15 +61,18 @@
                 </div>
             </div>
 
-            {{-- Ilustrasi maskot WIRA UMK. Balon ucapan diberi ruang sendiri
-                 di atas maskot (bukan ditumpuk di atas kepala) agar tidak
-                 menutupi wajah dan tidak menabrak teks di sebelahnya. --}}
-            <div class="flex shrink-0 flex-col items-center gap-1.5 self-center sm:self-auto sm:pr-2">
+            {{-- Ilustrasi maskot WIRA UMK.
+                 Desktop: balon di ATAS maskot (ruang vertikal cukup).
+                 Mobile : balon di KIRI maskot, karena header sempit dan balon
+                 di atas mendorong konten turun. Ekor balon diputar ke kanan
+                 agar tetap menunjuk maskot. --}}
+            <div class="flex shrink-0 flex-row items-center gap-1.5 self-center sm:flex-col sm:self-auto sm:pr-2">
                 {{-- Balon ucapan mini WIRA --}}
-                <div class="relative hidden rounded-md border-2 border-ink bg-gold px-2.5 py-1 text-[0.62rem] font-extrabold uppercase tracking-[0.06em] shadow-[var(--shadow-flat-sm)] sm:block">
-                    Terbang Tinggi!
-                    {{-- Ekor balon mengarah ke maskot di bawahnya. --}}
-                    <span class="absolute -bottom-[6px] left-1/2 size-2 -translate-x-1/2 rotate-45 border-b-2 border-r-2 border-ink bg-gold" aria-hidden="true"></span>
+                <div class="relative shrink-0 rounded-md border-2 border-ink bg-gold px-2.5 py-1 text-[0.58rem] font-extrabold uppercase leading-tight tracking-[0.06em] shadow-[var(--shadow-flat-sm)] sm:text-[0.62rem]">
+                    Terbang<br class="sm:hidden">Tinggi!
+                    {{-- Ekor balon: di kiri menunjuk ke kanan (ke maskot),
+                         di desktop menunjuk ke bawah. --}}
+                    <span class="absolute -right-[6px] top-1/2 size-2 -translate-y-1/2 rotate-45 border-r-2 border-t-2 border-ink bg-gold sm:-bottom-[6px] sm:left-1/2 sm:right-auto sm:top-auto sm:-translate-x-1/2 sm:translate-y-0 sm:border-b-2 sm:border-r-2 sm:border-t-0" aria-hidden="true"></span>
                 </div>
 
                 {{-- Maskot WIRA sekaligus pemicu Misi Rahasia: 7 ketukan cepat
