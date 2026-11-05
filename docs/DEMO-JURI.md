@@ -140,7 +140,36 @@ php artisan demo:accounts --password=SandiPilihanAnda
 php artisan demo:accounts --fresh --password=SandiPilihanAnda
 ```
 
-## 1.5. Kesalahan yang sering terjadi
+## 1.5. Keamanan kredensial
+
+Sandi akun **hanya ditampilkan sekali** di layar terminal. Tidak ada berkas
+kredensial yang ditulis otomatis ke dalam proyek.
+
+```bash
+# Membuat LO sekaligus menyimpan kredensial ke berkas DI LUAR proyek
+php artisan lo:generate --per-group=2 --csv=/tmp/lo-kredensial.csv
+
+# Setelah dibagikan, hapus berkasnya
+shred -u /tmp/lo-kredensial.csv 2>/dev/null || rm -f /tmp/lo-kredensial.csv
+```
+
+**Jangan** menyimpan berkas kredensial di dalam folder proyek. Versi lama
+perintah ini menulis `storage/app/lo-credentials-<waktu>.csv` setiap kali
+dijalankan; karena namanya memakai timestamp, berkas menumpuk tanpa batas
+(pernah 75 berkas berisi ratusan sandi di satu mesin).
+
+Berkas import (`storage/app/imports/*.csv`) kini **dihapus otomatis** setelah
+batch terakhir selesai. Berkas yatim dari import yang gagal di tengah jalan
+dibersihkan setelah 24 jam.
+
+Periksa sekali setelah penyiapan:
+
+```bash
+ls storage/app/          # harus hanya: imports  private  public
+find storage/app -name '*credentials*' -o -name '*.php'   # harus kosong
+```
+
+## 1.6. Kesalahan yang sering terjadi
 
 | Gejala | Sebab | Perbaikan |
 |---|---|---|

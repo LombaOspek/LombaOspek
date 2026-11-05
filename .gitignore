@@ -36,3 +36,20 @@ Thumbs.db
 /opencode.json
 /boost.json
 /tools
+
+# ---------------------------------------------------------------
+# Dokumen kerja: SEMUA .md diabaikan, kecuali panduan server produksi.
+#
+# Alasan: FLOW.md, PLAN-*.md, REQUIREMENTS.md, dan docs/*.md adalah catatan
+# pengembangan yang terus berubah. Isinya sering memuat angka yang cepat
+# kedaluwarsa (jumlah tes, jumlah modul) dan rincian internal yang tidak perlu
+# dibaca publik. Bila ikut ter-commit, dokumen itu jadi janji yang harus
+# dijaga setiap kali kode berubah.
+#
+# PENGECUALIAN: docs/DEMO-JURI.md - ini panduan penyiapan server produksi dan
+# demo untuk juri. Tanpa berkas ini, orang yang men-deploy tidak tahu urutan
+# perintah yang benar (migrate, seed, storage:link, groups:rebuild,
+# demo:accounts), dan aplikasi tampil kosong.
+# ---------------------------------------------------------------
+*.md
+!/docs/DEMO-JURI.md

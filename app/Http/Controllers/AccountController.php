@@ -382,6 +382,29 @@ class AccountController extends Controller
 
         $request->session()->put('import.'.$importId, $state);
 
+        /*
+         * Hapus berkas kerja setelah batch terakhir.
+         *
+         * Versi sebelumnya TIDAK pernah menghapus `storage/app/imports/<uuid>.csv`.
+         * Setiap import meninggalkan satu berkas berisi NIM, nama, dan email
+         * seluruh mahasiswa, dan folder itu menumpuk tanpa batas: pada
+         * pemeriksaan 5 November 2026 ada 74 berkas (697 KB) yang tidak
+         * dibutuhkan lagi. Itu data pribadi yang seharusnya tidak disimpan
+         * setelah import selesai.
+         */
+        if ($batch['done']) {
+            @unlink($absolute);
+
+            // Berkas yatim dari import yang gagal di tengah jalan (mis. tab
+            // ditutup sebelum `done`) dibersihkan sekalian: umur lebih dari
+            // 24 jam berarti tidak akan dilanjutkan lagi.
+            foreach (glob(dirname($absolute).DIRECTORY_SEPARATOR.'*.csv') ?: [] as $stale) {
+                if (is_file($stale) && filemtime($stale) < time() - 86400) {
+                    @unlink($stale);
+                }
+            }
+        }
+
         return response()->json([
             'ok' => true,
             'processed' => $state['offset'],

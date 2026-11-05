@@ -29,6 +29,7 @@ class GenerateLoCommand extends Command
 {
     protected $signature = 'lo:generate
                             {--per-group=2 : Jumlah minimal LO per gugus}
+                            {--csv= : Tulis kredensial ke path ini (di luar proyek). Berisi sandi PLAINTEXT}
                             {--dry-run : Tampilkan rencana tanpa membuat akun}';
 
     protected $description = 'Buat akun Liaison Officer agar setiap gugus punya minimal N LO sejurusan';
@@ -194,15 +195,36 @@ class GenerateLoCommand extends Command
             array_map(fn (array $c) => [$c['nim'], $c['name'], $c['major'], $c['password']], $created),
         );
 
-        $path = storage_path('app/lo-credentials-'.now()->format('Ymd-His').'.csv');
-        $handle = fopen($path, 'wb');
-        fputcsv($handle, ['NIM', 'Nama', 'Jurusan', 'Sandi']);
-        foreach ($created as $c) {
-            fputcsv($handle, [$c['nim'], $c['name'], $c['major'], $c['password']]);
-        }
-        fclose($handle);
+        /*
+         * Kredensial TIDAK ditulis ke disk.
+         *
+         * Versi sebelumnya menyimpan `storage/app/lo-credentials-<waktu>.csv`
+         * berisi sandi PLAINTEXT untuk setiap LO. Karena setiap kali perintah
+         * dijalankan berkas baru dibuat dengan nama berbeda, folder itu
+         * menumpuk: pada pemeriksaan 5 November 2026 ada 75 berkas berisi
+         * ratusan sandi akun.
+         *
+         * Risikonya nyata walaupun berkas itu tidak masuk git:
+         *   - `storage/app` ikut tersalin saat backup / zip / deploy;
+         *   - staf yang membuka folder itu bisa masuk sebagai LO mana pun;
+         *   - sandi tidak pernah kedaluwarsa, jadi bocornya berlaku selamanya.
+         *
+         * Sandi ditampilkan SEKALI di tabel di atas. Kalau panitia butuh
+         * berkas, mereka memakai opsi --csv=<path> yang menulis ke lokasi
+         * pilihan mereka sendiri, di luar proyek, dan hanya bila diminta.
+         */
+        if ($path = $this->option('csv')) {
+            $handle = fopen($path, 'wb');
+            fputcsv($handle, ['NIM', 'Nama', 'Jurusan', 'Sandi']);
+            foreach ($created as $c) {
+                fputcsv($handle, [$c['nim'], $c['name'], $c['major'], $c['password']]);
+            }
+            fclose($handle);
+            chmod($path, 0600);
 
-        $this->info('Kredensial juga disimpan di: '.$path);
+            $this->warn('Kredensial ditulis ke: '.$path);
+            $this->warn('Berkas berisi sandi plaintext - simpan aman, hapus setelah dibagikan.');
+        }
 
         return self::SUCCESS;
     }
