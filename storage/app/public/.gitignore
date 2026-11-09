@@ -1,2 +1,21 @@
+# Unggahan pengguna TIDAK disimpan di git: bukti foto mahasiswa, hadiah yang
+# diunggah admin, dan berkas kerja import semuanya bersifat pribadi dan
+# berubah-ubah.
 *
 !.gitignore
+
+# PENGECUALIAN: gambar katalog hadiah dan logo kampus.
+#
+# Ini bukan data pengguna, melainkan ASET APLIKASI - sama seperti favicon atau
+# maskot. Tanpa berkas ini, `migrate --seed` di server produksi menghasilkan
+# katalog dengan 9 hadiah yang gambarnya kosong, dan tidak ada perintah yang
+# bisa memulihkannya karena gambar dibuat manual, bukan dihasilkan seeder.
+#
+# Ditemukan saat memeriksa kesiapan produksi 10 November 2026:
+# `git ls-files storage/app/public/` hanya berisi .gitignore - artinya sembilan
+# gambar katalog tidak pernah ikut ter-deploy, dan juri melihat katalog tanpa
+# gambar di server.
+!/rewards/
+!/rewards/*.jpg
+!/brand/
+!/brand/*.png

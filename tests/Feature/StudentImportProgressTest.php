@@ -21,10 +21,20 @@ class StudentImportProgressTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** @var array<int, string> */
+    private array $tempFiles = [];
+
+    /** @var array<int, string> */
+    private array $filesBefore = [];
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->seed();
+
+        // Rekam isi folder sebelum tes; apa pun yang muncul sesudahnya adalah
+        // milik tes ini (termasuk berkas <uuid>.csv yang dibuat /init).
+        $this->filesBefore = glob(storage_path('app/imports').'/*.csv') ?: [];
     }
 
     private function admin(): User
@@ -33,10 +43,35 @@ class StudentImportProgressTest extends TestCase
     }
 
     /**
-     * Tulis CSV sementara dan kembalikan path-nya.
+     * Berkas CSV sementara yang dibuat tes ini, untuk dibersihkan di tearDown.
      *
-     * @param  array<int, array<int, string>>  $rows
+     * Tes ini menulis ke `storage/app/imports` SUNGGUHAN (bukan Storage::fake),
+     * jadi tanpa pembersihan setiap eksekusi suite meninggalkan NIM, nama, dan
+     * email mahasiswa uji di folder data aplikasi. Terbukti: 6 berkas
+     * tertinggal saat tes kebocoran kredensial dijalankan.
+     *
+     * @var array<int, string>
      */
+    protected function tearDown(): void
+    {
+        foreach ($this->tempFiles as $file) {
+            if (is_file($file)) {
+                @unlink($file);
+            }
+        }
+
+        foreach (glob(storage_path('app/imports').'/*.csv') ?: [] as $file) {
+            if (! in_array($file, $this->filesBefore, true) && is_file($file)) {
+                @unlink($file);
+            }
+        }
+
+        $this->tempFiles = [];
+        $this->filesBefore = [];
+
+        parent::tearDown();
+    }
+
     private function csv(array $rows, string $name = 'import.csv'): string
     {
         $dir = storage_path('app/imports');
@@ -45,7 +80,10 @@ class StudentImportProgressTest extends TestCase
             mkdir($dir, 0755, true);
         }
 
+        // Nama unik agar antar-tes tidak saling menimpa.
+        $name = uniqid('test-', true).'-'.$name;
         $path = $dir.DIRECTORY_SEPARATOR.$name;
+        $this->tempFiles[] = $path;
         $handle = fopen($path, 'wb');
         fputcsv($handle, ['NIM', 'Nama Penuh', 'Jurusan', 'Email Kampus', 'Kode Gugus']);
 

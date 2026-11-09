@@ -272,7 +272,10 @@ class AccountController extends Controller
             $offset += $batch['processed'];
         } while (! $batch['done'] && $batch['processed'] > 0);
 
-        @unlink($copy);
+        // Jalur sync juga wajib menyapu berkas yatim. Sebelumnya hanya
+        // `@unlink($copy)` di sini, sehingga berkas `sync-*.csv` dari import
+        // yang gagal - dan dari setiap eksekusi tes - menumpuk di folder data.
+        $this->cleanupImportFiles($working, $copy);
 
         return back()->with('toast', [
             'title' => 'Import selesai',
@@ -307,6 +310,12 @@ class AccountController extends Controller
         if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
+
+        // Sapu sisa import sebelumnya SEBELUM menaruh berkas baru. Tanpa ini,
+        // setiap /init yang tidak dilanjutkan ke /batch (mis. admin menutup
+        // halaman, atau tes yang hanya memeriksa total baris) meninggalkan satu
+        // CSV berisi NIM, nama, dan email di folder data.
+        $this->cleanupImportFiles($dir);
 
         $request->file('file')->move($dir, $id.'.csv');
 
@@ -393,16 +402,7 @@ class AccountController extends Controller
          * setelah import selesai.
          */
         if ($batch['done']) {
-            @unlink($absolute);
-
-            // Berkas yatim dari import yang gagal di tengah jalan (mis. tab
-            // ditutup sebelum `done`) dibersihkan sekalian: umur lebih dari
-            // 24 jam berarti tidak akan dilanjutkan lagi.
-            foreach (glob(dirname($absolute).DIRECTORY_SEPARATOR.'*.csv') ?: [] as $stale) {
-                if (is_file($stale) && filemtime($stale) < time() - 86400) {
-                    @unlink($stale);
-                }
-            }
+            $this->cleanupImportFiles(dirname($absolute), $absolute);
         }
 
         return response()->json([
@@ -710,6 +710,42 @@ class AccountController extends Controller
             'icon' => 'check',
             'tone' => 'success',
         ]);
+    }
+
+    /**
+     * Hapus berkas kerja import setelah pekerjaan selesai.
+     *
+     * Kenapa ini method sendiri, bukan `@unlink` yang ditulis ulang:
+     * import punya DUA jalur (bertahap lewat /batch dan sinkron lewat /import).
+     * Versi sebelumnya hanya membersihkan di jalur bertahap, sehingga berkas
+     * `sync-*.csv` dari jalur sinkron - dan dari setiap eksekusi tes -
+     * menumpuk di folder data tanpa batas. Isinya NIM, nama, dan email
+     * mahasiswa.
+     *
+     * Berkas yatim (import yang gagal di tengah jalan, mis. tab ditutup
+     * sebelum batch terakhir) dibersihkan bila umurnya lewat 24 jam: sesudah
+     * itu tidak akan dilanjutkan lagi.
+     */
+    private function cleanupImportFiles(string $dir, ?string $finished = null): void
+    {
+        // Berkas yang baru saja selesai diproses SELALU dihapus - tidak menunggu
+        // 24 jam. Kalau ikut aturan umur, datanya bertahan sehari penuh padahal
+        // pekerjaannya sudah beres.
+        if ($finished !== null && is_file($finished)) {
+            @unlink($finished);
+        }
+
+        foreach (glob($dir.DIRECTORY_SEPARATOR.'*.csv') ?: [] as $file) {
+            if (! is_file($file) || $file === $finished) {
+                continue;
+            }
+
+            // Berkas lain mungkin sedang dipakai jalur paralel; hanya yang
+            // sudah lewat sehari yang pasti ditinggalkan.
+            if (filemtime($file) < time() - 86400) {
+                @unlink($file);
+            }
+        }
     }
 
     public function template()
