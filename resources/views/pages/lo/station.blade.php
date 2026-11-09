@@ -30,6 +30,69 @@
         </div>
     </section>
 
+    {{--
+        Pemindai QR klaim.
+
+        Kenapa ada di sini juga, bukan hanya di `/admin/bursa`:
+        di hari penyerahan, mahasiswa datang membawa QR di layar ponselnya, dan
+        yang memegang meja station adalah LO — bukan admin. Tanpa pemindai di
+        halaman ini, LO harus mengetik 10 karakter kode untuk setiap mahasiswa,
+        dan itu sumber salah ketik saat antrean panjang.
+
+        `data-scanner-target` mengarahkan hasil pindai ke station LO sendiri:
+        LO langsung melihat baris klaimnya dengan tombol Serahkan, bukan
+        dilempar ke halaman verifikasi publik.
+    --}}
+    <section
+        data-claim-scanner
+        data-scanner-target="{{ url('/lo/station') }}?q={code}"
+        class="rounded-lg border-2 border-ink bg-paper shadow-[var(--shadow-flat)]"
+    >
+        <div class="border-b-2 border-ink/10 px-3.5 py-2.5">
+            <h2 class="font-display text-[0.86rem] font-extrabold">Pindai QR Klaim</h2>
+            <p class="mt-0.5 text-[0.62rem] font-medium text-ink-faint">
+                Arahkan QR di layar mahasiswa ke kamera — klaimnya langsung terbuka.
+            </p>
+        </div>
+
+        <div class="p-3.5">
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" data-scanner-open class="btn btn-primary btn-sm">
+                    <x-icon name="search" class="size-3.5" :stroke="2.6" />
+                    Buka kamera
+                </button>
+
+                <button type="button" data-scanner-close hidden class="btn btn-ghost btn-sm">
+                    Hentikan kamera
+                </button>
+
+                <p data-scanner-status class="text-[0.66rem] font-semibold text-ink-faint" aria-live="polite"></p>
+            </div>
+
+            <video
+                data-scanner-video
+                hidden muted playsinline
+                class="mt-3 w-full max-w-sm rounded-sm border-2 border-ink bg-ink"
+            ></video>
+
+            <form data-scanner-manual class="mt-3 flex flex-wrap items-end gap-2">
+                <label class="min-w-0 flex-1">
+                    <span class="mb-1 block font-display text-[0.58rem] font-bold uppercase tracking-[0.08em]">
+                        Atau masukkan kode manual
+                    </span>
+                    <input
+                        type="text"
+                        data-scanner-code
+                        placeholder="OQ-XXXX-XXXX"
+                        autocomplete="off" spellcheck="false"
+                        class="w-full rounded-sm border-2 border-ink bg-paper px-2.5 py-1.5 font-mono text-[0.72rem] font-bold uppercase tracking-wider focus:outline-none"
+                    >
+                </label>
+                <button type="submit" class="btn btn-ghost btn-sm">Periksa</button>
+            </form>
+        </div>
+    </section>
+
     {{-- Kotak cari kode klaim: dipakai di meja station --}}
     <section class="rounded-lg border-2 border-ink bg-gold/20 p-3.5 shadow-[var(--shadow-flat)]">
         <form method="GET" action="{{ route('lo.station') }}" class="flex flex-wrap items-end gap-2">

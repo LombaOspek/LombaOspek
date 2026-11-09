@@ -57,14 +57,65 @@ class RewardQr
     }
 
     /**
-     * Isi QR sengaja BUKAN kode klaim mentah, melainkan URL verifikasi.
+     * URL yang ditanam di QR.
      *
-     * Alasannya: kalau panitia memindai QR kode lama yang sudah diserahkan,
-     * mereka perlu tahu statusnya saat itu juga — bukan sekadar melihat teks.
-     * URL ini membuka halaman yang menampilkan hadiah, status, dan pemiliknya.
+     * KENAPA TIDAK MEMAKAI route() SAJA:
+     * `route()` membentuk URL absolut dari `APP_URL`. Pada pemeriksaan
+     * 9 November 2026 `.env` berisi `APP_URL=http://localhost:8000` sementara
+     * aplikasi benar-benar dilayani di `127.0.0.1:8123`. QR yang dihasilkan
+     * berisi:
+     *
+     *     http://localhost:8000/klaim/OQ-QRRF-Z6UT   <- tidak ada yang mendengar
+     *
+     * Panitia memindai QR itu, browser membuka "site can't be reached".
+     * Dilaporkan sebagai "QR rusak padahal baru digenerate", padahal isinya
+     * benar — hanya menunjuk ke host yang salah. QR ini dibagikan ke ponsel
+     * mahasiswa di jaringan kampus, jadi host yang salah mematikan seluruh
+     * alur penyerahan.
+     *
+     * Jadi: pakai host dari request yang sedang berjalan. QR yang dicetak dari
+     * laptop panitia di `http://10.0.0.5:8123` akan berisi alamat itu, dan
+     * ponsel di jaringan yang sama bisa membukanya. `APP_URL` hanya cadangan
+     * ketika benar-benar tidak ada request (seeder, perintah artisan).
      */
     public static function claimPayload(string $claimCode): string
     {
-        return route('rewards.claim-verify', ['code' => $claimCode]);
+        $path = '/klaim/'.rawurlencode($claimCode);
+        $fallback = rtrim((string) config('app.url'), '/').$path;
+
+        if (! app()->bound('request')) {
+            return $fallback;
+        }
+
+        $request = request();
+
+        /*
+         * Deteksi request HTTP nyata lewat HTTP_HOST, BUKAN lewat
+         * runningInConsole(). Di PHPUnit `runningInConsole()` juga bernilai
+         * true, sehingga guard itu membuat tes mengukur APP_URL alih-alih
+         * perilaku yang dipakai di produksi. HTTP_HOST hanya terisi pada
+         * request sungguhan.
+         *
+         * Juga BUKAN `$request->root()`: di dalam PHPUnit method itu tetap
+         * mengembalikan APP_URL (`http://localhost:8000`) walaupun HTTP_HOST
+         * sudah diatur, sehingga tes tidak bisa membuktikan apa pun tentang
+         * perilaku di produksi. Menyusun host dari HTTP_HOST langsung membuat
+         * jalur yang diuji identik dengan jalur yang dipakai server.
+         */
+        $host = $request->server->get('HTTP_HOST');
+
+        if (! is_string($host) || $host === '') {
+            $host = $request->server->get('SERVER_NAME');
+        }
+
+        if (! is_string($host) || $host === '') {
+            return $fallback;
+        }
+
+        // Skema mengikuti request sungguhan (dan X-Forwarded-Proto di balik
+        // reverse proxy); HTTP_HOST sudah memuat port bila bukan 80/443.
+        $scheme = $request->getScheme() ?: 'http';
+
+        return $scheme.'://'.$host.$path;
     }
 }
