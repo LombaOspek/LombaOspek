@@ -287,13 +287,32 @@ Ini inti peran LO.
 4. **Setujui** → XP dan koin mahasiswa masuk, ledger tercatat.
 5. **Tolak** → wajib menulis alasan.
 
-## 3.2. Serah terima hadiah
+## 3.2. Station penyerahan hadiah (`/lo/station`)
 
-1. Buka `/admin/bursa` **hanya jika LO juga diberi akses**; secara default LO
-   hanya menyerahkan hadiah **mahasiswa gugusnya sendiri**.
-2. Pada klaim berstatus *Menunggu*, tekan **Serahkan**.
-3. Klaim yang sudah diserahkan **tidak bisa diserahkan dua kali** — tunjukkan
-   pesan penolakannya.
+Inilah meja penyerahan di hari-H. Satu LO membuka satu station, dan station
+itu hanya menampilkan klaim mahasiswa **gugusnya sendiri**.
+
+1. Buka menu **Station Hadiah** di sidebar (atau `/lo/station`).
+2. **Pindai QR mahasiswa**: tekan *Buka kamera*, arahkan QR di layar ponsel
+   mahasiswa. Klaimnya langsung terbuka di station ini.
+3. Tidak ada kamera? Ketik kode `OQ-XXXX-XXXX` di kotak **kode manual**.
+4. Tekan **Serahkan** pada baris klaim → status pindah ke *Diserahkan*.
+5. Tekan **Serahkan** sekali lagi pada klaim yang sama → muncul penolakan
+   *"sudah diserahkan"*. Tunjukkan pesan itu; ini yang mencegah barang
+   diberikan dua kali.
+
+**Kartu ringkasan** di atas tabel (Menunggu / Diserahkan / Dibatalkan) bisa
+diklik untuk menyaring. Angkanya menghitung seluruh gugus, bukan hanya halaman
+yang sedang dibuka.
+
+**Beberapa station paralel**: karena setiap LO hanya melihat gugusnya, 5–10
+station bisa berjalan bersamaan tanpa saling melihat data mahasiswa lain.
+Admin tetap bisa menyerahkan lintas gugus lewat `/admin/bursa` bila ada station
+campuran.
+
+**Catatan penting untuk juri**: koin sudah terpotong saat mahasiswa menukar.
+Menyerahkan barang **tidak mengubah saldo** — station hanya menandai barang
+sudah berpindah tangan.
 
 ## 3.3. Tiket bantuan (`/lo/tiket`)
 
