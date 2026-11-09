@@ -11,6 +11,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EngagementController;
 use App\Http\Controllers\LeaderboardController;
 use App\Http\Controllers\LiaisonOfficerController;
+use App\Http\Controllers\StationController;
 use App\Http\Controllers\MentorController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuestBuilderController;
@@ -140,6 +141,22 @@ Route::middleware(['auth', 'role:lo,admin'])
         // Tiket bantuan tetap tersedia bagi LO.
         Route::get('/tiket', [MentorController::class, 'tickets'])->name('tickets');
         Route::post('/tiket/{ticket}/balas', [MentorController::class, 'reply'])->name('tickets.reply');
+
+        /*
+         * Station penyerahan hadiah.
+         *
+         * Sebelumnya menu LO menautkan ke `admin.rewards`, yang berada di grup
+         * `role:admin` - jadi LO selalu mendapat 403 sebelum mencapai
+         * controller, walaupun `AdminRewardController::fulfill()` sudah
+         * mengizinkan peran LO. Izin di controller tidak pernah tercapai.
+         *
+         * Rute ini memakai grup `role:lo,admin` yang sama dengan portal LO,
+         * sehingga LO punya halaman sendiri untuk menyerahkan hadiah gugusnya.
+         */
+        Route::get('/station', [StationController::class, 'index'])->name('station');
+        Route::get('/station/cari', [StationController::class, 'lookup'])->name('station.lookup');
+        Route::post('/station/klaim/{redemption}/serahkan', [StationController::class, 'fulfill'])
+            ->name('station.fulfill');
     });
 
 /*

@@ -103,7 +103,7 @@
         @endforeach
 
         @if ($navUser?->isMentor())
-            <a href="{{ route('lo.dashboard') }}" class="flex items-center gap-2.5 rounded-sm border-2 px-2.5 py-[0.44rem] font-display text-[0.79rem] font-bold transition {{ request()->routeIs('lo.*') ? 'border-ink bg-brand text-white shadow-[var(--shadow-flat-sm)]' : 'border-transparent text-ink-soft hover:border-ink/20 hover:bg-paper' }}">
+            <a href="{{ route('lo.dashboard') }}" class="flex items-center gap-2.5 rounded-sm border-2 px-2.5 py-[0.44rem] font-display text-[0.79rem] font-bold transition {{ request()->routeIs('lo.dashboard') || request()->routeIs('lo.proof') ? 'border-ink bg-brand text-white shadow-[var(--shadow-flat-sm)]' : 'border-transparent text-ink-soft hover:border-ink/20 hover:bg-paper' }}">
                 <x-icon name="shield" class="size-[1.05rem]" :stroke="1.8" />
                 Verifikasi Bukti
             </a>
@@ -124,12 +124,20 @@
             </a>
         @endif
 
-        {{-- LO ikut menyerahkan hadiah gugusnya, tetapi hanya melihat daftar
-             klaim - harga dan stok tetap wewenang admin. --}}
+        {{--
+            LO menyerahkan hadiah lewat Station sendiri, bukan `/admin/bursa`.
+
+            Tautan lama menunjuk `admin.rewards`, yang berada di grup
+            middleware `role:admin`. Akibatnya setiap LO yang mengklik menu ini
+            pasti mendapat 403 "Anda tidak memiliki akses ke halaman ini",
+            walaupun controller-nya sudah mengizinkan peran LO.
+
+            Harga dan stok tetap wewenang admin; station hanya menyerahkan.
+        --}}
         @if ($navUser?->role === App\Enums\UserRole::LiaisonOfficer)
-            <a href="{{ route('admin.rewards') }}" class="flex items-center gap-2.5 rounded-sm border-2 px-2.5 py-[0.44rem] font-display text-[0.79rem] font-bold transition {{ request()->routeIs('admin.rewards*') ? 'border-ink bg-brand text-white shadow-[var(--shadow-flat-sm)]' : 'border-transparent text-ink-soft hover:border-ink/20 hover:bg-paper' }}">
+            <a href="{{ route('lo.station') }}" class="flex items-center gap-2.5 rounded-sm border-2 px-2.5 py-[0.44rem] font-display text-[0.79rem] font-bold transition {{ request()->routeIs('lo.station*') ? 'border-ink bg-brand text-white shadow-[var(--shadow-flat-sm)]' : 'border-transparent text-ink-soft hover:border-ink/20 hover:bg-paper' }}">
                 <x-icon name="ticket" class="size-[1.05rem]" :stroke="1.8" />
-                Serahkan Hadiah
+                Station Hadiah
             </a>
         @endif
     </nav>

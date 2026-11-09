@@ -10,12 +10,12 @@ login sampai fitur terakhir, dan daftar hal yang perlu diperiksa sebelum hari-H.
 
 ## 1.1. Prasyarat
 
-| Kebutuhan | Versi minimum | Catatan |
-|---|---|---|
-| PHP | 8.3 | ekstensi: `pdo_mysql`, `mbstring`, `gd`, `zip`, `intl`, `fileinfo` |
-| MySQL / MariaDB | 8.0 / 10.6 | MariaDB 10.4 juga cukup |
-| Composer | 2.6 | |
-| Node.js | 20 | hanya untuk build aset, tidak perlu jalan di produksi |
+| Kebutuhan       | Versi minimum | Catatan                                                                        |
+| --------------- | ------------- | ------------------------------------------------------------------------------ |
+| PHP             | 8.3           | ekstensi: `pdo_mysql`, `mbstring`, `gd`, `zip`, `intl`, `fileinfo` |
+| MySQL / MariaDB | 8.0 / 10.6    | MariaDB 10.4 juga cukup                                                        |
+| Composer        | 2.6           |                                                                                |
+| Node.js         | 20            | hanya untuk build aset, tidak perlu jalan di produksi                          |
 
 ## 1.2. Perintah berurutan
 
@@ -70,16 +70,16 @@ php artisan db:seed --force
 
 Seeder `DatabaseSeeder` menjalankan berurutan:
 
-| Seeder | Isi |
-|---|---|
-| `GroupSeeder` | gugus dasar |
-| `QuestSeeder` | **13 modul** dalam 3 babak |
+| Seeder                        | Isi                                             |
+| ----------------------------- | ----------------------------------------------- |
+| `GroupSeeder`               | gugus dasar                                     |
+| `QuestSeeder`               | **13 modul** dalam 3 babak                |
 | `OrientationScheduleSeeder` | **14 agenda** jadwal, 13 tertaut ke modul |
-| `SideQuestSeeder` | **5 Side Quest** |
-| `QuizQuestionSeeder` | soal kuis MOD-04 |
-| `AchievementSeeder` | **7 lencana** |
-| `RewardSeeder` | **9 hadiah** + gambar katalog |
-| `FaqSeeder` | pertanyaan umum |
+| `SideQuestSeeder`           | **5 Side Quest**                          |
+| `QuizQuestionSeeder`        | soal kuis MOD-04                                |
+| `AchievementSeeder`         | **7 lencana**                             |
+| `RewardSeeder`              | **9 hadiah** + gambar katalog             |
+| `FaqSeeder`                 | pertanyaan umum                                 |
 
 ```bash
 # ── 6. Tautan penyimpanan (WAJIB, kalau tidak gambar hadiah 404) ─
@@ -120,13 +120,13 @@ php artisan demo:accounts --show # ketiga akun demo ada
 
 Cek cepat di browser:
 
-| URL | Harus menampilkan |
-|---|---|
-| `/login` | form masuk, ada favicon di tab |
-| `/bursa` | 9 kartu hadiah, **semua bergambar** (900×900) |
-| `/jadwal` | 8 hari, 14 agenda |
-| `/misi` | 13 modul, urutan hari menanjak |
-| `/admin/bursa` | panel "Pindai QR Klaim" |
+| URL              | Harus menampilkan                                    |
+| ---------------- | ---------------------------------------------------- |
+| `/login`       | form masuk, ada favicon di tab                       |
+| `/bursa`       | 9 kartu hadiah, **semua bergambar** (900×900) |
+| `/jadwal`      | 8 hari, 14 agenda                                    |
+| `/misi`        | 13 modul, urutan hari menanjak                       |
+| `/admin/bursa` | panel "Pindai QR Klaim"                              |
 
 ## 1.4. Kalau perlu menyetel ulang data demo
 
@@ -171,14 +171,14 @@ find storage/app -name '*credentials*' -o -name '*.php'   # harus kosong
 
 ## 1.6. Kesalahan yang sering terjadi
 
-| Gejala | Sebab | Perbaikan |
-|---|---|---|
-| Gambar hadiah tidak muncul | `storage:link` belum dijalankan | `php artisan storage:link` |
-| Semua halaman 500 | `APP_KEY` kosong | `php artisan key:generate` |
-| Perubahan `.env` tidak terpakai | config ter-cache | `php artisan config:clear` |
-| "Hari ke-74 dari 8", badge hari salah | `OSPEK_START_DATE` belum diisi | isi tanggal acara, lalu `config:clear` |
-| Aset/CSS tidak termuat | `public/build` tidak diunggah | jalankan `npm run build` lalu unggah |
-| Gugus kosong setelah seeding | `groups:rebuild` belum jalan | `php artisan groups:rebuild` |
+| Gejala                                | Sebab                             | Perbaikan                                |
+| ------------------------------------- | --------------------------------- | ---------------------------------------- |
+| Gambar hadiah tidak muncul            | `storage:link` belum dijalankan | `php artisan storage:link`             |
+| Semua halaman 500                     | `APP_KEY` kosong                | `php artisan key:generate`             |
+| Perubahan `.env` tidak terpakai     | config ter-cache                  | `php artisan config:clear`             |
+| "Hari ke-74 dari 8", badge hari salah | `OSPEK_START_DATE` belum diisi  | isi tanggal acara, lalu `config:clear` |
+| Aset/CSS tidak termuat                | `public/build` tidak diunggah   | jalankan `npm run build` lalu unggah   |
+| Gugus kosong setelah seeding          | `groups:rebuild` belum jalan    | `php artisan groups:rebuild`           |
 
 ---
 
@@ -362,30 +362,30 @@ sengketa atau saat LO berhalangan.
 Kalau waktu di depan juri terbatas, urutan terpendek yang tetap menunjukkan
 kedalaman:
 
-| Menit | Apa | Di mana |
-|:--:|---|---|
-| 0–1 | Login mahasiswa, tunjukkan Dasbor + agenda hari ini | `/dashboard` |
-| 1–2 | Buka **Jadwal**, tunjukkan seminar → kuis | `/jadwal` |
-| 2–3 | Buka **Peta Misi**, tunjukkan urutan hari & 3 babak | `/misi` |
-| 3–3,5 | Tukar hadiah, tunjukkan **kode klaim + QR** | `/bursa` |
-| 3,5–4 | Login **LO**, setujui bukti mahasiswa | `/lo/verifikasi` |
-| 4–4,5 | Login **admin**, pindai/verifikasi QR klaim | `/admin/bursa` |
-| 4,5–5 | Tunjukkan Side Quest yang butuh foto + syarat bertahap | `/misi-samping` |
+| Menit | Apa                                                       | Di mana            |
+| :----: | --------------------------------------------------------- | ------------------ |
+|  0–1  | Login mahasiswa, tunjukkan Dasbor + agenda hari ini       | `/dashboard`     |
+|  1–2  | Buka **Jadwal**, tunjukkan seminar → kuis          | `/jadwal`        |
+|  2–3  | Buka **Peta Misi**, tunjukkan urutan hari & 3 babak | `/misi`          |
+| 3–3,5 | Tukar hadiah, tunjukkan **kode klaim + QR**         | `/bursa`         |
+| 3,5–4 | Login **LO**, setujui bukti mahasiswa               | `/lo/verifikasi` |
+| 4–4,5 | Login **admin**, pindai/verifikasi QR klaim         | `/admin/bursa`   |
+| 4,5–5 | Tunjukkan Side Quest yang butuh foto + syarat bertahap    | `/misi-samping`  |
 
 ---
 
 # 6. Pertanyaan juri yang sering muncul
 
-| Pertanyaan | Jawaban singkat | Buktinya |
-|---|---|---|
-| "Bagaimana mencegah curang?" | Bukti foto ditinjau LO sejurusan; beberapa modul butuh token lokasi atau GPS radius 150 m | `VerificationService`, `AntiCheatVerificationTest` |
-| "XP bisa di-farm?" | Tidak — setiap award membawa idempotency key unik | `XpService` |
-| "Kenapa XP dan koin dipisah?" | XP mengukur progres dan tidak pernah berkurang; koin mata uang belanja dengan ledger sendiri | `CoinService` |
-| "Bagaimana kalau salah hapus akun?" | Soft delete + tombol Pulihkan, riwayat utuh | `AccountLifecycleTest` |
-| "Data mahasiswa dari mana?" | Import CSV dengan progress nyata, sandi tampil sekali | `StudentImportProgressTest` |
-| "Bagaimana panitia tahu klaim asli?" | QR berisi URL verifikasi; kode teks tetap ada sebagai cadangan | `RewardClaimQrTest` |
-| "Kenapa pakai Laravel, bukan HTML biasa?" | Laravel backend yang mengeluarkan HTML/CSS/JS; tidak ada SPA framework | — |
-| "Mobile-nya bagaimana?" | 0 overflow di 360/393/430 px; Bursa 2 kolom; sidebar jadi drawer | uji overflow |
+| Pertanyaan                                | Jawaban singkat                                                                              | Buktinya                                               |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| "Bagaimana mencegah curang?"              | Bukti foto ditinjau LO sejurusan; beberapa modul butuh token lokasi atau GPS radius 150 m    | `VerificationService`, `AntiCheatVerificationTest` |
+| "XP bisa di-farm?"                        | Tidak — setiap award membawa idempotency key unik                                           | `XpService`                                          |
+| "Kenapa XP dan koin dipisah?"             | XP mengukur progres dan tidak pernah berkurang; koin mata uang belanja dengan ledger sendiri | `CoinService`                                        |
+| "Bagaimana kalau salah hapus akun?"       | Soft delete + tombol Pulihkan, riwayat utuh                                                  | `AccountLifecycleTest`                               |
+| "Data mahasiswa dari mana?"               | Import CSV dengan progress nyata, sandi tampil sekali                                        | `StudentImportProgressTest`                          |
+| "Bagaimana panitia tahu klaim asli?"      | QR berisi URL verifikasi; kode teks tetap ada sebagai cadangan                               | `RewardClaimQrTest`                                  |
+| "Kenapa pakai Laravel, bukan HTML biasa?" | Laravel backend yang mengeluarkan HTML/CSS/JS; tidak ada SPA framework                       | —                                                     |
+| "Mobile-nya bagaimana?"                   | 0 overflow di 360/393/430 px; Bursa 2 kolom; sidebar jadi drawer                             | uji overflow                                           |
 
 ---
 
