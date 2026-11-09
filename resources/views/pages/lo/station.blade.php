@@ -164,16 +164,45 @@
         </div>
 
         @if ($claims->isEmpty())
-            <div class="px-4 py-10 text-center">
-                <p class="font-display text-[0.86rem] font-bold text-ink-soft">
-                    @if ($cari !== '')
-                        Tidak ada klaim yang cocok dengan "{{ $cari }}".
-                    @elseif ($status === 'pending')
-                        Tidak ada hadiah yang menunggu diambil. Gugus Anda sudah bersih.
-                    @else
-                        Belum ada klaim pada status ini.
-                    @endif
-                </p>
+            <div class="px-4 py-8">
+                @if (($elsewhere ?? null) !== null)
+                    {{--
+                        Bedakan "kode salah" dari "klaim milik gugus lain".
+                        Tanpa ini petugas hanya melihat "tidak ada yang cocok"
+                        padahal klaimnya jelas ada — dan menyimpulkan sistemnya
+                        rusak. Dua gugus bisa berasal dari prodi yang sama, jadi
+                        mahasiswa dari gugus sebelah memang mungkin datang ke
+                        station yang salah.
+                    --}}
+                    <div class="mx-auto max-w-xl rounded-lg border-2 border-vermilion bg-vermilion/10 p-3.5">
+                        <p class="font-display text-[0.74rem] font-extrabold uppercase tracking-[0.08em] text-vermilion">
+                            Klaim ini bukan gugus Anda
+                        </p>
+                        <p class="mt-1.5 text-[0.76rem] font-semibold leading-relaxed text-ink">
+                            Kode <span class="font-mono">{{ $elsewhere['code'] }}</span> milik
+                            <strong>{{ $elsewhere['name'] }}</strong> ({{ $elsewhere['nim'] }})
+                            dari gugus <strong>{{ $elsewhere['group'] ?? 'lain' }}</strong>.
+                        </p>
+                        <p class="mt-1.5 text-[0.72rem] font-medium leading-relaxed text-ink-soft">
+                            Arahkan mahasiswa ke station gugusnya, atau minta admin
+                            menyerahkan lewat <span class="font-mono">/admin/bursa</span>.
+                            Status klaim: <strong>{{ $elsewhere['status'] }}</strong>.
+                        </p>
+                    </div>
+                @else
+                    <p class="text-center font-display text-[0.86rem] font-bold text-ink-soft">
+                        @if ($cari !== '')
+                            Tidak ada klaim yang cocok dengan "{{ $cari }}".
+                            <span class="mt-1 block text-[0.68rem] font-medium">
+                                Periksa kembali kodenya — huruf <strong>O</strong>, bukan angka nol.
+                            </span>
+                        @elseif ($status === 'pending')
+                            Tidak ada hadiah yang menunggu diambil. Gugus Anda sudah bersih.
+                        @else
+                            Belum ada klaim pada status ini.
+                        @endif
+                    </p>
+                @endif
             </div>
         @else
             <div class="overflow-x-auto">

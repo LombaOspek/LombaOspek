@@ -56,7 +56,21 @@ class LoStationTest extends TestCase
         return RewardRedemption::query()->create([
             'user_id' => $student->getKey(),
             'reward_id' => $reward->getKey(),
-            'claim_code' => 'OQ-TEST-'.strtoupper(substr(md5((string) $student->getKey()), 0, 4)),
+            /*
+             * Kode uji WAJIB memakai alfabet yang sama dengan produksi
+             * (RewardService::CLAIM_ALPHABET = ABCDEFGHJKMNPQRSTUVWXYZ23456789),
+             * yang tidak memuat I, O, 0, maupun 1. Memakai md5 mentah
+             * menghasilkan kode seperti `OQ-TEST-0A3F`, dan normalisasi
+             * pencarian (yang menukar 0->O) tidak bisa mengembalikannya -
+             * membuat tes gagal pada kode yang di produksi tidak mungkin ada.
+             */
+            'claim_code' => (function () use ($student): string {
+                $h = strtoupper(strtr(md5((string) $student->getKey()), '01IO', 'WXYZ'));
+
+                // Format produksi: OQ-XXXX-XXXX (dua kelompok empat karakter).
+                return 'OQ-'.substr($h, 0, 4).'-'.substr($h, 4, 4);
+            })(),
+
             'coins_spent' => $reward->cost_coins,
             'status' => $status,
         ]);

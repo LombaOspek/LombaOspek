@@ -57,7 +57,17 @@ export function initClaimScanner() {
         const text = String(raw || '').trim();
         if (!text) return null;
 
-        const direct = text.toUpperCase().match(/OQ-[A-Z0-9]{4}-[A-Z0-9]{4}/);
+        /*
+         * Layar menampilkan "OQ-" tetapi orang mengetik "0Q-": di banyak font
+         * huruf O dan angka 0 nyaris sama. Alfabet kode sengaja tidak memuat
+         * 0 maupun 1, jadi mengganti keduanya aman - tidak ada kode sah yang
+         * berubah arti. Tanpa ini, kode yang benar tetap "tidak ditemukan".
+         */
+        const fixLookalikes = (s) => s.replace(/0/g, 'O').replace(/1/g, 'I');
+
+        const normalized = fixLookalikes(text.toUpperCase());
+
+        const direct = normalized.match(/OQ-[A-Z0-9]{4}-[A-Z0-9]{4}/);
         if (direct) return direct[0];
 
         try {

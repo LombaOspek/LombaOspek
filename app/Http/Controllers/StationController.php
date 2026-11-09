@@ -40,7 +40,31 @@ class StationController extends Controller
             $status = 'pending';
         }
 
+        /*
+         * Normalisasi kode sebelum mencari.
+         *
+         * Alfabet kode klaim (RewardService::CLAIM_ALPHABET) sengaja tidak
+         * memuat huruf I, O, angka 0 dan 1 - untuk menghindari salah baca.
+         * Tetapi pengguna TETAP mengetik "0" ketika melihat "O", karena di
+         * layar banyak font membuat keduanya nyaris sama.
+         *
+         * Kasus nyata 10 November 2026: kode di layar `OQ-R97N-J4D8`, diketik
+         * `0Q-R97N-J4D8`, hasil pencarian kosong, dan dilaporkan sebagai
+         * "masih tidak bisa di-redeem" padahal klaimnya ada.
+         *
+         * Karena 0 dan 1 tidak pernah muncul dalam kode asli, menggantinya
+         * dengan O dan I aman: tidak ada kode sah yang berubah arti.
+         */
         $cari = trim((string) $request->query('q', ''));
+
+        /*
+         * `$cari` yang diteruskan ke view adalah versi yang SUDAH dinormalisasi,
+         * supaya kotak pencarian menampilkan kode yang benar setelah pengguna
+         * mengetik `0Q-...`. Tanpa ini, layar tetap memperlihatkan angka nol
+         * padahal hasilnya sudah ketemu — membingungkan saat menjelaskan ke
+         * petugas station.
+         */
+        $cari = self::normalizeClaimCode($cari);
 
         $memberIds = $this->memberIds($officer);
 
@@ -76,6 +100,34 @@ class StationController extends Controller
             'cancelled' => RewardRedemption::query()->whereIn('user_id', $memberIds)->where('status', 'cancelled')->count(),
         ];
 
+        /*
+         * Kalau pencarian kosong padahal kartu "Menunggu" menunjukkan ada
+         * klaim, penyebab tersering BUKAN kode salah - melainkan klaim itu
+         * milik gugus lain. Tanpa penjelasan, layar hanya berkata "tidak ada
+         * yang cocok" dan petugas mengira sistemnya rusak.
+         *
+         * Kasus nyata: DEMO-LO memegang gugus 45 (Sistem Informasi 1),
+         * sedangkan klaim yang dicari milik gugus 46 (Sistem Informasi 2).
+         */
+        $elsewhere = null;
+
+        if ($cari !== '' && ! $query->exists()) {
+            $found = RewardRedemption::query()
+                ->with('user:id,name,nim,group_id')
+                ->where('claim_code', $cari)
+                ->first();
+
+            if ($found !== null) {
+                $elsewhere = [
+                    'code' => $found->claim_code,
+                    'status' => $found->status,
+                    'name' => $found->user?->name,
+                    'nim' => $found->user?->nim,
+                    'group' => \App\Models\Group::query()->find($found->user?->group_id)?->name,
+                ];
+            }
+        }
+
         return view('pages.lo.station', [
             'claims' => $query->paginate(15)->withQueryString(),
             'counts' => $counts,
@@ -83,6 +135,7 @@ class StationController extends Controller
             'cari' => $cari,
             'group' => $officer->group,
             'memberCount' => $memberIds->count(),
+            'elsewhere' => $elsewhere,
         ]);
     }
 
@@ -160,6 +213,39 @@ class StationController extends Controller
         }
 
         return redirect()->route('lo.station', ['q' => $code]);
+    }
+
+    /**
+     * Rapikan kode klaim hasil ketikan manual.
+     *
+     * Kode memakai alfabet tanpa I, O, 0, dan 1 supaya tidak ambigu saat
+     * dibaca. Tetapi justru karena tampilannya mirip, orang mengetik angka
+     * untuk huruf: "OQ-R97N-J4D8" diketik "0Q-R97N-J4D8" dan pencarian gagal.
+     * Karena 0/1 tidak pernah ada di kode sah, menukarnya aman.
+     *
+     * Nama dan NIM tidak boleh diubah, jadi hanya bagian yang berbentuk kode
+     * klaim yang dinormalisasi.
+     */
+    private static function normalizeClaimCode(string $value): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        // Bentuk kode klaim: OQ-XXXX-XXXX (setelah diganti, bisa juga oq-...)
+        $upper = strtoupper($value);
+
+        if (! preg_match('/^[0O][Q][-\s]?[A-Z0-9]{4}[-\s]?[A-Z0-9]{4}$/', $upper)) {
+            return $value;
+        }
+
+        $compact = preg_replace('/[^A-Z0-9]/', '', $upper);
+
+        // Huruf pertama selalu O (bukan nol), dan 0/1 di dalam kode adalah
+        // salah baca untuk O/I.
+        $compact = str_replace(['0', '1'], ['O', 'I'], $compact);
+
+        return 'OQ-'.substr($compact, 2, 4).'-'.substr($compact, 6, 4);
     }
 
     /** @return \Illuminate\Support\Collection<int, int> */
