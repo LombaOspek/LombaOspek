@@ -114,8 +114,12 @@ php artisan view:cache
 ## 1.3. Perintah verifikasi setelah penyiapan
 
 ```bash
-php artisan test                 # 320 tes harus lulus
+php artisan test                 # seluruh tes harus lulus
 php artisan demo:accounts --show # ketiga akun demo ada
+
+# 9 gambar katalog + logo kampus HARUS ada, kalau tidak Bursa tampil kosong
+ls storage/app/public/rewards/ | wc -l    # harus 9
+ls storage/app/public/brand/ | wc -l      # harus 1
 ```
 
 Cek cepat di browser:
