@@ -52,6 +52,7 @@ OSPEK_START_DATE=2026-11-10
 OSPEK_TOTAL_DAYS=8
 
 # Side Quest yang wajib untuk sertifikat (default SQ-01).
+# Isi `none` untuk mematikan syarat ini.
 OSPEK_REQUIRED_SIDE_QUEST=SQ-01
 ```
 
@@ -90,8 +91,9 @@ php artisan groups:rebuild
 ```
 
 `groups:rebuild` mengelompokkan seluruh mahasiswa menjadi gugus **satu prodi
-per gugus**, maksimal 70 anggota, dan menugaskan LO sejurusan. Perintah ini
-idempoten — aman dijalankan ulang.
+per gugus**, maksimal 70 anggota, dan menugaskan LO **sejurusan** ke gugus itu.
+Satu LO boleh membimbing beberapa gugus asalkan seprodi. Perintah ini idempoten
+— aman dijalankan ulang.
 
 ```bash
 # ── 8. Akun demo untuk juri ──────────────────────────────────────
@@ -180,7 +182,7 @@ find storage/app -name '*credentials*' -o -name '*.php'   # harus kosong
 | Gambar hadiah tidak muncul            | `storage:link` belum dijalankan | `php artisan storage:link`             |
 | Semua halaman 500                     | `APP_KEY` kosong                | `php artisan key:generate`             |
 | Perubahan `.env` tidak terpakai     | config ter-cache                  | `php artisan config:clear`             |
-| "Hari ke-74 dari 8", badge hari salah | `OSPEK_START_DATE` belum diisi  | isi tanggal acara, lalu `config:clear` |
+| "Hari ke-74 dari 8", badge hari salah | `OSPEK_START_DATE` masih tanggal lama | isi tanggal acara, lalu `config:clear` |
 | Aset/CSS tidak termuat                | `public/build` tidak diunggah   | jalankan `npm run build` lalu unggah   |
 | Gugus kosong setelah seeding          | `groups:rebuild` belum jalan    | `php artisan groups:rebuild`           |
 
@@ -223,13 +225,16 @@ Tunjukkan bahwa **acara dan modul terhubung**:
 
 ### Langkah 3 — Anti-curang (ini yang paling ditanyakan juri)
 
-1. Buka modul bertipe **Token** (mis. MOD-02 Perpustakaan) → butuh kode dari
-   petugas di lokasi.
-2. Buka modul bertipe **GPS** (MOD-08 Apel) → kehadiran diverifikasi koordinat,
-   radius 150 m dari auditorium.
-3. Tekankan: **bukti tidak bisa diklaim dari kamar**.
-4. Setelah mahasiswa mengunggah bukti, bukti masuk antrean LO **sejurusan** —
-   LO beda jurusan tidak bisa melihatnya.
+1. Buka modul bertipe **Token** (MOD-02 Perpustakaan, MOD-06 Lab, MOD-09 Stan
+   MCC) → butuh kode dari petugas di lokasi; kode tidak bisa ditebak.
+2. Buka modul bertipe **GPS** (MOD-08 Apel, MOD-13 Upacara Penutupan) →
+   kehadiran diverifikasi koordinat, **radius 150 m** dari lokasi acara.
+3. Modul lain memakai **bukti foto** (MOD-01), **check-in** (MOD-05/07/10/12),
+   **refleksi** (MOD-03/11), dan **kuis** (MOD-04).
+4. Tekankan: **bukti tidak bisa diklaim dari kamar** — token harus dari lokasi,
+   GPS harus di dalam radius.
+4. Setelah mahasiswa mengunggah bukti, bukti masuk antrean LO **gugusnya** —
+   LO gugus lain tidak bisa melihatnya, dan tidak bisa menyetujuinya.
 
 ### Langkah 4 — Kuis (`/kuis`)
 
@@ -241,7 +246,9 @@ Tunjukkan bahwa **acara dan modul terhubung**:
 ### Langkah 5 — Side Quest (`/misi-samping`)
 
 1. **5 misi sosial**, terkunci bertahap: butuh 0/2/4/6/8 modul utama selesai.
-2. **SQ-01 Sapa Lima Teman** — refleksi tertulis, wajib untuk sertifikat.
+2. **SQ-01 Sapa Lima Teman Baru** — refleksi tertulis, **wajib untuk sertifikat**
+   (`OSPEK_REQUIRED_SIDE_QUEST=SQ-01`). Inilah satu-satunya syarat sosial:
+   tanpa SQ-01, sertifikat tidak terbit walau 13 modul utama selesai.
 3. **SQ-02 Foto Bareng Gugus** — **butuh bukti foto**, ditinjau LO.
 4. Tekankan: Side Quest **tidak memblokir** perjalanan utama, tetapi memberi
    koin jauh lebih besar (100% XP vs 10% untuk modul).
@@ -268,6 +275,8 @@ Tunjukkan bahwa **acara dan modul terhubung**:
 1. Status kelengkapan syarat.
 2. `/verifikasi/{kode}` — halaman publik untuk memeriksa keaslian sertifikat
    (bisa dibuka tanpa login, cocok untuk ditunjukkan ke pihak luar).
+   Tanpa kode, `/verifikasi` menampilkan formulir pencarian; dengan kode yang
+   benar menampilkan nama, NIM, prodi, dan tanggal selesai orientasi.
 
 ### Langkah 9 — Profil & Bantuan
 
@@ -283,10 +292,16 @@ LO = Liaison Officer (kakak tingkat pendamping). Masuk dengan NIM `DEMO-LO`.
 
 Ini inti peran LO.
 
-1. Antrean bukti dari mahasiswa **gugusnya sendiri**.
-2. Aturan yang ditegakkan server: **LO hanya melihat bukti mahasiswa sejurusan**.
-   LO Informatika tidak bisa melihat bukti mahasiswa Sistem Informasi —
-   tunjukkan ini sebagai bukti anti-curang.
+1. Antrean bukti dari mahasiswa **gugusnya sendiri** (satu gugus = satu prodi).
+2. Aturan yang ditegakkan server ada di dua lapis:
+   - **Daftar** difilter `group_id`, jadi LO hanya melihat bukti anggotanya.
+   - **Persetujuan** diperiksa ulang `User::canReviewSubmissionOf()`; percobaan
+     menyetujui bukti mahasiswa gugus lain ditolak dengan pesan
+     *"Mahasiswa ini bukan anggota gugus Anda."*
+
+   Inilah bukti anti-curangnya: **LO gugus lain tidak bisa menyetujui bukti
+   Anda**, bahkan bila ia menebak URL-nya. Karena satu gugus hanya berisi satu
+   prodi, batas gugus otomatis menjadi batas prodi.
 3. Buka satu bukti → lihat foto, keterangan, waktu unggah.
 4. **Setujui** → XP dan koin mahasiswa masuk, ledger tercatat.
 5. **Tolak** → wajib menulis alasan.
@@ -300,8 +315,14 @@ itu hanya menampilkan klaim mahasiswa **gugusnya sendiri**.
 2. **Pindai QR mahasiswa**: tekan *Buka kamera*, arahkan QR di layar ponsel
    mahasiswa. Klaimnya langsung terbuka di station ini.
 3. Tidak ada kamera? Ketik kode `OQ-XXXX-XXXX` di kotak **kode manual**.
-4. Tekan **Serahkan** pada baris klaim → status pindah ke *Diserahkan*.
-5. Tekan **Serahkan** sekali lagi pada klaim yang sama → muncul penolakan
+   Kode boleh diketik dengan **angka nol** (`0Q-...`) — sistem menormalkannya
+   otomatis, karena huruf O dan angka 0 nyaris sama di layar.
+4. Kalau kode yang dicari milik **gugus lain**, layar tidak berkata "tidak ada
+   klaim" begitu saja — ia menampilkan nama mahasiswa, NIM, nama gugus, dan
+   status klaimnya, plus arahan ke station yang benar. Ini sering terjadi karena
+   dua gugus dari prodi yang sama berdampingan.
+5. Tekan **Serahkan** pada baris klaim → status pindah ke *Diserahkan*.
+6. Tekan **Serahkan** sekali lagi pada klaim yang sama → muncul penolakan
    *"sudah diserahkan"*. Tunjukkan pesan itu; ini yang mencegah barang
    diberikan dua kali.
 
@@ -357,10 +378,12 @@ Masuk dengan NIM `DEMO-ADMIN`.
 
 1. **CRUD hadiah**: nama, kode, harga, stok, kuota per mahasiswa, kategori,
    gambar (maks 2 MB), aktif/nonaktif.
-2. **Pindai QR Klaim** — panel pemindai kamera. Kalau browser tidak mendukung
-   `BarcodeDetector`, tombol kamera **tidak ditampilkan** (bukan tombol mati).
+2. **Pindai QR Klaim** — panel pemindai kamera. Pemindai memakai
+   `BarcodeDetector` bila tersedia, dan **turun ke `jsQR`** bila tidak — jadi
+   tombol kamera tetap berfungsi di Safari/iPhone, bukan disembunyikan.
 3. Masukkan kode manual `OQ-XXXX-XXXX` → halaman verifikasi menampilkan status
    klaim: **BELUM DISERAHKAN / SUDAH DISERAHKAN / DIBATALKAN**.
+   Kode boleh diketik dengan angka nol (`0Q-...`) — sistem menormalkannya.
 4. Tunjukkan peringatan di halaman itu: *"Jangan serahkan barang kedua kali."*
 
 ## 4.4. Quest Builder (`/admin/misi`)
@@ -375,8 +398,8 @@ Masuk dengan NIM `DEMO-ADMIN`.
 
 ## 4.5. Verifikasi bukti sebagai admin
 
-Admin bisa melihat **semua** bukti (bukan hanya sejurusan), berguna saat
-sengketa atau saat LO berhalangan.
+Admin bisa melihat **semua** bukti lintas gugus (bukan hanya gugusnya sendiri),
+berguna saat sengketa atau saat LO berhalangan.
 
 ---
 
@@ -401,7 +424,7 @@ kedalaman:
 
 | Pertanyaan                                | Jawaban singkat                                                                              | Buktinya                                               |
 | ----------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| "Bagaimana mencegah curang?"              | Bukti foto ditinjau LO sejurusan; beberapa modul butuh token lokasi atau GPS radius 150 m    | `VerificationService`, `AntiCheatVerificationTest` |
+| "Bagaimana mencegah curang?"              | Bukti foto ditinjau LO gugusnya (ditegakkan dua lapis: daftar + persetujuan); modul tertentu butuh token lokasi atau GPS radius 150 m | `VerificationService`, `AntiCheatVerificationTest` |
 | "XP bisa di-farm?"                        | Tidak — setiap award membawa idempotency key unik                                           | `XpService`                                          |
 | "Kenapa XP dan koin dipisah?"             | XP mengukur progres dan tidak pernah berkurang; koin mata uang belanja dengan ledger sendiri | `CoinService`                                        |
 | "Bagaimana kalau salah hapus akun?"       | Soft delete + tombol Pulihkan, riwayat utuh                                                  | `AccountLifecycleTest`                               |
@@ -423,4 +446,5 @@ kedalaman:
 - [ ] Panel "Pindai QR Klaim" muncul di `/admin/bursa`
 - [ ] Sandi demo **sudah diganti** dari nilai bawaan
 - [ ] Link video demo & hosting terisi di proposal
-- [ ] 102 LO uji diganti LO sungguhan (jika ada)
+- [ ] LO uji (`lo:generate`) diganti LO sungguhan — cek jumlahnya dengan
+      `php artisan tinker --execute="echo App\Models\User::where('role','lo')->count();"`
